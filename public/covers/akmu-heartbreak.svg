@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F5E6D3"/>
+      <stop offset="100%" stop-color="#D9B996"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#D9B996"/>
+      <stop offset="100%" stop-color="#8B5E3C"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  
+        <circle cx="200" cy="240" r="160" fill="#8B5E3C" opacity="0.85"/>
+        <circle cx="200" cy="240" r="100" fill="#D9B996" opacity="0.85"/>
+        <line x1="200" y1="240" x2="400" y2="240" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="300" y2="413.2050807568877" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="100.00000000000004" y2="413.20508075688775" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="0" y2="240.00000000000003" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="99.99999999999991" y2="66.7949192431123" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="300" y2="66.79491924311228" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/>
+      
+  <g>
+    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">어떻게 이별까지...</text>
+    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">AKMU</text>
+  </g>
+</svg>

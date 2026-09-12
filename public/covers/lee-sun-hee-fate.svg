@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B0F2E"/>
+      <stop offset="100%" stop-color="#9B3D6F"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9B3D6F"/>
+      <stop offset="100%" stop-color="#F2C094"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  
+        <circle cx="200" cy="200" r="30" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.9"/><circle cx="200" cy="200" r="48" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.8200000000000001"/><circle cx="200" cy="200" r="66" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.74"/><circle cx="200" cy="200" r="84" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.66"/><circle cx="200" cy="200" r="102" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.5800000000000001"/><circle cx="200" cy="200" r="120" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.5"/><circle cx="200" cy="200" r="138" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.42000000000000004"/><circle cx="200" cy="200" r="156" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.33999999999999997"/>
+        <circle cx="200" cy="200" r="20" fill="#9B3D6F"/>
+      
+  <g>
+    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">인연</text>
+    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">이선희</text>
+  </g>
+</svg>

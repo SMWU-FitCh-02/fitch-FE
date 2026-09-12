@@ -1,0 +1,133 @@
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("accessToken")
+}
+
+export function saveTokens(accessToken: string, refreshToken?: string) {
+  if (typeof window === "undefined") return
+  localStorage.setItem("accessToken", accessToken)
+  if (refreshToken) localStorage.setItem("refreshToken", refreshToken)
+}
+
+export function clearTokens() {
+  if (typeof window === "undefined") return
+  localStorage.removeItem("accessToken")
+  localStorage.removeItem("refreshToken")
+}
+
+async function request(path: string, options: RequestInit = {}) {
+  const token = getAccessToken()
+  const headers: Record<string, string> = { ...(options.headers as Record<string, string>) }
+  if (token) headers["Authorization"] = `Bearer ${token}`
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  let body: any = null
+  try {
+    body = await res.json()
+  } catch {
+    // no JSON body
+  }
+  if (!res.ok) {
+    const message = (body && (body.error || body.message)) || `요청에 실패했어요. (${res.status})`
+    throw new Error(message)
+  }
+  return body
+}
+
+export const api = {
+  register(payload: {
+    username: string
+    password: string
+    name: string
+    nickname: string
+    email: string
+    birthDate?: string
+    phoneNumber?: string
+  }) {
+    return request("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  },
+  login(username: string, password: string) {
+    return request("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    })
+  },
+  checkUsername(username: string) {
+    return request(`/auth/check-username?username=${encodeURIComponent(username)}`)
+  },
+  getUser(id: number) {
+    return request(`/user/${id}`)
+  },
+  getVocalRange(userId: number) {
+    return request(`/user/${userId}/vocal-range`)
+  },
+  getVocalHistory(userId: number) {
+    return request(`/user/${userId}/vocal-history`)
+  },
+  uploadVoice(userId: number, blob: Blob, filename = "recording.webm") {
+    const fd = new FormData()
+    fd.append("file", blob, filename)
+    return request(`/voice/upload?userId=${userId}`, { method: "POST", body: fd })
+  },
+  getSongs() {
+    return request("/songs")
+  },
+  getSong(songId: number) {
+    return request(`/songs/${songId}`)
+  },
+  recommend(userId: number) {
+    return request(`/recommend/${userId}`)
+  },
+  keyAdjust(songId: number, userId: number) {
+    return request(`/songs/${songId}/key-adjust?user_id=${userId}`)
+  },
+}
+
+export type SongResponse = {
+  songId: number
+  title: string
+  artist: string
+  genre: string
+  key: string
+  minNote: number
+  maxNote: number
+  minNoteLabel: string
+  maxNoteLabel: string
+}
+
+export type RecommendResponse = {
+  userId: number
+  userMaxNote: number
+  userMaxNoteLabel: string
+  recommendedSongs: SongResponse[]
+}
+
+export function decodeJwtSubject(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]))
+    return payload.sub ?? null
+  } catch {
+    return null
+  }
+}
+
+// The backend's login response doesn't include userId, so we resolve it
+// by matching the JWT subject (username) against /user/{id}. Scoped to a
+// small range since this is a class project with a handful of test users.
+export async function findUserIdByUsername(username: string, maxId = 50): Promise<number | null> {
+  for (let id = 1; id <= maxId; id++) {
+    try {
+      const u = await api.getUser(id)
+      if (u.username === username) return id
+    } catch {
+      // keep scanning
+    }
+  }
+  return null
+}

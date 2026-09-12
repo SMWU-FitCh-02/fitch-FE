@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E1E2E"/>
+      <stop offset="100%" stop-color="#404060"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#404060"/>
+      <stop offset="100%" stop-color="#FFCC66"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  
+        <circle cx="64.4158304192374" cy="136.71819802858516" r="7.008994092652936" fill="#FFCC66" opacity="0.3922742575811554"/><circle cx="324.8594753714429" cy="197.43984044398255" r="8.732591749957859" fill="#FFCC66" opacity="0.9237013303634829"/><circle cx="148.04370614003105" cy="271.30141687053754" r="8.039076771868512" fill="#FFCC66" opacity="0.9384130080685953"/><circle cx="73.50024640989128" cy="265.9015380525685" r="12.428122658981748" fill="#FFCC66" opacity="0.4843239460916511"/><circle cx="397.1479313089451" cy="244.9649873212094" r="6.318823056991051" fill="#FFCC66" opacity="0.6293194432937315"/><circle cx="213.5195234998268" cy="198.77898991058328" r="15.843902313097793" fill="#FFCC66" opacity="0.36471291819182244"/><circle cx="274.46651682468246" cy="80.93226175528403" r="13.792406882827162" fill="#FFCC66" opacity="0.9488045417959483"/><circle cx="120.55936717948157" cy="311.387844225845" r="10.807978643854414" fill="#FFCC66" opacity="0.7111087106563563"/><circle cx="189.73840342160946" cy="393.6344662411694" r="8.095072390137375" fill="#FFCC66" opacity="0.7360488036629808"/><circle cx="19.186482846748998" cy="189.98050292252526" r="17.659738874312314" fill="#FFCC66" opacity="0.9126362096872276"/><circle cx="254.8512738452027" cy="347.7422054101259" r="15.666562703776805" fill="#FFCC66" opacity="0.3539347701568084"/><circle cx="275.54941533698235" cy="294.4985448568083" r="12.774695223480187" fill="#FFCC66" opacity="0.8348024619923629"/><circle cx="117.3836207632605" cy="236.96780784309678" r="13.73052459654843" fill="#FFCC66" opacity="0.5515926473125382"/><circle cx="55.44066170873361" cy="359.05831357637766" r="19.700352345943777" fill="#FFCC66" opacity="0.5704628400224501"/>
+      
+  <g>
+    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">오늘 밤은 어둠이...</text>
+    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">10CM</text>
+  </g>
+</svg>

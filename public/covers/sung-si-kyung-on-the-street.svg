@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1B1F3A"/>
+      <stop offset="100%" stop-color="#5C6B99"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5C6B99"/>
+      <stop offset="100%" stop-color="#E2D89F"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  
+        <rect x="60" y="240" width="80" height="160" fill="#5C6B99" opacity="0.7"/>
+        <rect x="160" y="160" width="80" height="240" fill="#5C6B99" opacity="0.6"/>
+        <rect x="260" y="200" width="80" height="200" fill="#5C6B99" opacity="0.7"/>
+        <rect x="93.42428702685513" y="220.31962648799686" width="6" height="6" fill="#E2D89F"/><rect x="279.7677743864582" y="251.91650506107334" width="6" height="6" fill="#E2D89F"/><rect x="328.82271894922144" y="229.12568345425132" width="6" height="6" fill="#E2D89F"/><rect x="184.0234592857933" y="289.6757871652943" width="6" height="6" fill="#E2D89F"/><rect x="154.04129962400208" y="341.42363560366135" width="6" height="6" fill="#E2D89F"/><rect x="295.9517144155153" y="286.65916236187104" width="6" height="6" fill="#E2D89F"/><rect x="222.92816481500316" y="287.61176381109385" width="6" height="6" fill="#E2D89F"/><rect x="210.79493238901776" y="218.90771417881837" width="6" height="6" fill="#E2D89F"/><rect x="248.85953436810266" y="312.43057748079514" width="6" height="6" fill="#E2D89F"/><rect x="218.94935180247697" y="187.39071071054477" width="6" height="6" fill="#E2D89F"/>
+      
+  <g>
+    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">거리에서</text>
+    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">성시경</text>
+  </g>
+</svg>

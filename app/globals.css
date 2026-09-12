@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --font-sans: var(--font-geist-sans), system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}
+
+:root {
+  /* Dark navy karaoke theme */
+  --background: #0a1024;
+  --foreground: #e6ebff;
+  --surface: #111a36;
+  --surface-elevated: #1a2549;
+  --card: #131d3f;
+  --card-foreground: #e6ebff;
+  --popover: #1a2549;
+  --popover-foreground: #e6ebff;
+  --primary: #7b8cff;
+  --primary-foreground: #0a1024;
+  --secondary: #1f2c54;
+  --secondary-foreground: #e6ebff;
+  --muted: #1a2549;
+  --muted-foreground: #94a3d4;
+  --accent: #2a3a6a;
+  --accent-foreground: #e6ebff;
+  --destructive: #ef4444;
+  --destructive-foreground: #fee2e2;
+  --border: #243262;
+  --input: #1a2549;
+  --ring: #7b8cff;
+  --brand: #9d8cff;
+  --brand-foreground: #0a1024;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbar for horizontal lists */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* App background gradient for karaoke vibe */
+.bg-app-gradient {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(123, 140, 255, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(157, 140, 255, 0.12), transparent 60%),
+    linear-gradient(180deg, #0a1024 0%, #080d24 100%);
+}
+
+.glow-primary {
+  box-shadow: 0 0 0 1px rgba(123, 140, 255, 0.35), 0 10px 30px rgba(123, 140, 255, 0.25);
+}
+
+/* Mobile-first container */
+.mobile-shell {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* Slightly rounded cards per design spec */
+.card-shape {
+  border-radius: 12px;
+}
+
+@keyframes pulse-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.wave-bar {
+  animation: pulse-wave 1.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes pitch-rise {
+  0% {
+    transform: translateY(20%);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.pitch-rise {
+  animation: pitch-rise 0.5s ease-out forwards;
+}

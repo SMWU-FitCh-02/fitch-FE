@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="100%" stop-color="#FF8FA3"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8FA3"/>
+      <stop offset="100%" stop-color="#9D8CFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  
+        <circle cx="300" cy="200" r="46.50822554896014" fill="#9D8CFF" opacity="0.85"/><circle cx="292.3879532511287" cy="238.26834323650897" r="35.44810920516723" fill="#FF8FA3" opacity="0.85"/><circle cx="270.71067811865476" cy="270.71067811865476" r="43.88919866855095" fill="#FF8FA3" opacity="0.85"/><circle cx="238.268343236509" cy="292.3879532511287" r="39.543253316781275" fill="#9D8CFF" opacity="0.85"/><circle cx="200" cy="300" r="33.26556177939089" fill="#FF8FA3" opacity="0.85"/><circle cx="161.73165676349103" cy="292.3879532511287" r="46.475797901223096" fill="#FF8FA3" opacity="0.85"/><circle cx="129.28932188134524" cy="270.71067811865476" r="32.01191398255739" fill="#9D8CFF" opacity="0.85"/><circle cx="107.61204674887132" cy="238.268343236509" r="31.899721207524145" fill="#FF8FA3" opacity="0.85"/><circle cx="100" cy="200" r="47.03106843338064" fill="#FF8FA3" opacity="0.85"/><circle cx="107.61204674887132" cy="161.73165676349103" r="47.214489262204154" fill="#9D8CFF" opacity="0.85"/><circle cx="129.28932188134524" cy="129.28932188134524" r="43.49234023206552" fill="#FF8FA3" opacity="0.85"/><circle cx="161.73165676349097" cy="107.61204674887135" r="35.336704744428765" fill="#FF8FA3" opacity="0.85"/><circle cx="199.99999999999997" cy="100" r="38.95146036901485" fill="#9D8CFF" opacity="0.85"/><circle cx="238.268343236509" cy="107.61204674887134" r="39.82810090382695" fill="#FF8FA3" opacity="0.85"/><circle cx="270.71067811865476" cy="129.28932188134524" r="47.17824657190131" fill="#FF8FA3" opacity="0.85"/><circle cx="292.38795325112864" cy="161.73165676349095" r="31.476542249259218" fill="#9D8CFF" opacity="0.85"/>
+        <circle cx="200" cy="200" r="60" fill="#FFE066"/>
+      
+  <g>
+    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Dynamite</text>
+    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">BTS</text>
+  </g>
+</svg>
