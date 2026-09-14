@@ -24,6 +24,7 @@ export function RangeTest({
   initialPhase?: Phase
   userId?: number
 }) {
+
   const [phase, setPhase] = React.useState<Phase>(initialPhase)
   const [recording, setRecording] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
@@ -38,34 +39,38 @@ export function RangeTest({
   const recordedBlobRef = React.useRef<Blob | null>(null)
 
   async function startRealRecording() {
-    if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const mr = new MediaRecorder(stream)
-      chunksRef.current = []
-      mr.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+      if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        streamRef.current = stream
+        const mr = new MediaRecorder(stream)
+        chunksRef.current = []
+        mr.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data)
+        }
+        mr.start(1000)   // ← 핵심 수정: 1초마다 청크 생성
+        mediaRecorderRef.current = mr
+      } catch {
+        setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
       }
-      mr.start()
-      mediaRecorderRef.current = mr
-    } catch {
-      setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
-    }
   }
 
-  function stopRealRecording() {
-    const mr = mediaRecorderRef.current
-    if (!mr) return
-    try {
-      mr.stop()
-    } catch {}
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    mediaRecorderRef.current = null
-    streamRef.current = null
-    recordedBlobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
-    chunksRef.current = []
+  function stopRealRecording(): Promise<void> {
+      return new Promise((resolve) => {
+        const mr = mediaRecorderRef.current
+        if (!mr) { resolve(); return }
+        mr.onstop = () => {
+          streamRef.current?.getTracks().forEach((t) => t.stop())
+          mediaRecorderRef.current = null
+          streamRef.current = null
+          recordedBlobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
+          chunksRef.current = []
+          resolve()
+        }
+        try { mr.stop() } catch { resolve() }
+      })
   }
+
 
   // simulate recording capture
   React.useEffect(() => {
@@ -146,12 +151,12 @@ export function RangeTest({
     if (p === "low") await startRealRecording()
   }
 
-  function nextStage() {
-    if (phase === "low") setPhase("high")
-    else if (phase === "high") {
-      stopRealRecording()
-      setPhase("analyzing")
-    }
+  async function nextStage() {
+      if (phase === "low") setPhase("high")
+      else if (phase === "high") {
+        await stopRealRecording()
+        setPhase("analyzing")
+      }
   }
 
   React.useEffect(() => {
