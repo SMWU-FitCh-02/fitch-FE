@@ -2,16 +2,19 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Bookmark, Play, Pause } from "lucide-react"
+import { ArrowLeft, Bookmark, BookmarkCheck, Play, Pause } from "lucide-react"
 import { api, type SongResponse } from "@/lib/api"
 import { difficultyTier, colorFromString } from "@/lib/song-display"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { BackendSongCard } from "@/components/backend-song-card"
+import { useStore } from "@/lib/store"
 
 export default function SongDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const songId = Number(params.id)
+  const { toggleSongBookmarkRemote, bookmarkedSongIds } = useStore()
+  const isSaved = bookmarkedSongIds.has(songId)
 
   const [song, setSong] = React.useState<SongResponse | null>(null)
   const [similar, setSimilar] = React.useState<SongResponse[]>([])
@@ -85,8 +88,15 @@ export default function SongDetailPage() {
         <button onClick={() => router.back()} className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <button className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground">
-          <Bookmark className="h-5 w-5" />
+        <button
+          onClick={() => toggleSongBookmarkRemote(songId)}
+          className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
+        >
+          {isSaved ? (
+            <BookmarkCheck className="h-5 w-5 text-primary" />
+          ) : (
+            <Bookmark className="h-5 w-5" />
+          )}
         </button>
       </header>
 

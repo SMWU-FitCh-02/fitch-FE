@@ -64,6 +64,19 @@ export const api = {
   getUser(id: number) {
     return request(`/user/${id}`)
   },
+  updateUser(
+    id: number,
+    payload: { name?: string; nickname?: string; email?: string; birthDate?: string; phoneNumber?: string }
+  ) {
+    return request(`/user/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  },
+  deleteUser(id: number) {
+    return request(`/user/${id}`, { method: "DELETE" })
+  },
   getVocalRange(userId: number) {
     return request(`/user/${userId}/vocal-range`)
   },
@@ -87,6 +100,22 @@ export const api = {
   keyAdjust(songId: number, userId: number) {
     return request(`/songs/${songId}/key-adjust?user_id=${userId}`)
   },
+  toggleSongBookmark(songId: number) {
+    return request(`/bookmarks/songs/${songId}`, { method: "POST" })
+  },
+  getSongBookmarks() {
+    return request("/bookmarks/songs")
+  },
+  toggleChartLike(payload: { externalId: string; title: string; artist: string; artworkUrl?: string | null }) {
+    return request("/bookmarks/charts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  },
+  getChartLikes() {
+    return request("/bookmarks/charts")
+  },
 }
 
 export type SongResponse = {
@@ -106,6 +135,13 @@ export type RecommendResponse = {
   userMaxNote: number
   userMaxNoteLabel: string
   recommendedSongs: SongResponse[]
+}
+
+export type ChartLikeEntry = {
+  externalId: string
+  title: string
+  artist: string
+  artworkUrl: string | null
 }
 
 export function decodeJwtSubject(token: string): string | null {

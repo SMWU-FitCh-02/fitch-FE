@@ -5,18 +5,36 @@ import Link from "next/link"
 import { Mic } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { useStore } from "@/lib/store"
-import { recommendSongs } from "@/lib/songs"
-import { SongCard } from "@/components/song-card"
+import { api, type SongResponse } from "@/lib/api"
+import { BackendSongCard } from "@/components/backend-song-card"
 import { Button } from "@/components/ui/button"
 
 export default function RangeRecommendationsPage() {
   const { profile } = useStore()
   const hasRange = !!profile.range
+  const [songs, setSongs] = React.useState<SongResponse[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
 
-  const songs = React.useMemo(() => {
-    if (!hasRange) return []
-    return recommendSongs(profile.range!.comfortableHigh, { limit: 30, tolerance: 4 })
-  }, [profile.range, hasRange])
+  React.useEffect(() => {
+    if (!hasRange || !profile.userId) return
+    let cancelled = false
+    setLoading(true)
+    api
+      .recommend(profile.userId)
+      .then((rec) => {
+        if (!cancelled) setSongs(rec.recommendedSongs ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setError("추천곡을 불러오지 못했어요.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hasRange, profile.userId])
 
   if (!hasRange) {
     return (
@@ -37,18 +55,25 @@ export default function RangeRecommendationsPage() {
       <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4 mb-5">
         <div className="text-[11px] text-primary font-bold">맞춤 추천</div>
         <div className="mt-1 text-lg font-extrabold leading-tight">
-          편한 고음 {profile.range!.comfortableHigh} 기준 {songs.length}곡
+          {loading ? "불러오는 중..." : `내 음역대 기준 ${songs.length}곡`}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
           비슷한 음역대 곡들이에요. 너무 높지 않게 부르고 싶을 때 추천!
         </div>
       </div>
 
-      <div className="space-y-2">
-        {songs.map((s) => (
-          <SongCard key={s.id} song={s} />
-        ))}
-      </div>
+      {loading && <div className="text-center text-xs text-muted-foreground py-8">불러오는 중...</div>}
+      {!loading && error && <div className="text-center text-xs text-destructive py-8">{error}</div>}
+
+      {!loading && !error && (
+        <div className="space-y-2">
+          {songs.length === 0 ? (
+            <div className="text-center text-xs text-muted-foreground py-8">추천할 곡이 없어요.</div>
+          ) : (
+            songs.map((s) => <BackendSongCard key={s.songId} song={s} />)
+          )}
+        </div>
+      )}
     </main>
   )
 }

@@ -10,14 +10,35 @@ import { SONGS } from "@/lib/songs"
 import { SongCard } from "@/components/song-card"
 import { fetchKoreaTopSongs, type ChartEntry } from "@/lib/itunes"
 import { ChartSongRow } from "@/components/chart-song-row"
+import { api } from "@/lib/api"
 
 export default function HomePage() {
-  const { profile } = useStore()
+  const { profile, setProfile } = useStore()
   const greeting = greetByHour()
   const hasRange = !!profile.range
 
   const [popular, setPopular] = React.useState<ChartEntry[]>([])
   const [popularLoading, setPopularLoading] = React.useState(true)
+
+  // keep the greeting in sync with the backend (e.g. after a nickname change)
+  React.useEffect(() => {
+    if (!profile.userId) return
+    let cancelled = false
+    api
+      .getUser(profile.userId)
+      .then((u) => {
+        if (cancelled) return
+        const displayName = u.nickname || u.name
+        if (displayName && displayName !== profile.name) {
+          setProfile((p) => ({ ...p, name: displayName }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.userId])
 
   React.useEffect(() => {
     let cancelled = false

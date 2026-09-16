@@ -5,24 +5,43 @@ import { useRouter } from "next/navigation"
 import {
   Music2,
   KeyRound,
-  Users,
   LineChart,
   Mic,
   ChevronRight,
   LogOut,
   Pencil,
   ShieldCheck,
-  Bell,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { clearTokens } from "@/lib/api"
+import { clearTokens, api } from "@/lib/api"
+import * as React from "react"
 
 export default function MyPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
   const hasRange = !!profile.range
+
+  // keep the displayed name in sync with the backend (e.g. after a nickname change)
+  React.useEffect(() => {
+    if (!profile.userId) return
+    let cancelled = false
+    api
+      .getUser(profile.userId)
+      .then((u) => {
+        if (cancelled) return
+        const displayName = u.nickname || u.name
+        if (displayName && displayName !== profile.name) {
+          setProfile((p) => ({ ...p, name: displayName }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.userId])
 
   function logout() {
     clearTokens()
@@ -44,13 +63,6 @@ export default function MyPage() {
       title: "키 조정",
       desc: "부르고 싶은 곡의 추천 키 제공",
       requiresRange: true,
-    },
-    {
-      href: "/mypage/artist-recommendations",
-      icon: Users,
-      title: "유사 음색 아티스트 추천",
-      desc: "아티스트 검색 → 유사 음색 곡",
-      requiresRange: false,
     },
     {
       href: "/mypage/history",
@@ -127,13 +139,6 @@ export default function MyPage() {
         설정
       </h2>
       <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
-        <Link href="/mypage/notifications" className="flex items-center gap-3 p-4 hover:bg-surface/50">
-          <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
-            <Bell className="h-5 w-5" />
-          </div>
-          <div className="flex-1 text-sm font-semibold">알림 설정</div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
         <Link href="/mypage/privacy" className="flex items-center gap-3 p-4 hover:bg-surface/50">
           <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
             <ShieldCheck className="h-5 w-5" />

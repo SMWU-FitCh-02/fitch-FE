@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api"
 
 const AVATARS = ["🎤", "🎧", "🎵", "🎶", "🎸", "🎹", "🥁", "🎺", "💜", "✨", "🌙", "☀️"]
 
@@ -18,12 +19,35 @@ export default function ProfileEditPage() {
   const [name, setName] = React.useState(profile.name)
   const [email, setEmail] = React.useState(profile.email)
   const [avatar, setAvatar] = React.useState(profile.avatar || "🎤")
+  const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
+  const [error, setError] = React.useState("")
 
-  function save() {
-    setProfile((p) => ({ ...p, name, email, avatar }))
-    setSaved(true)
-    setTimeout(() => router.back(), 800)
+  async function save() {
+    if (!profile.userId) {
+      // no real backend user (e.g. still using a purely local/demo profile) —
+      // fall back to the old local-only behavior
+      setProfile((p) => ({ ...p, name, email, avatar }))
+      setSaved(true)
+      setTimeout(() => router.back(), 800)
+      return
+    }
+
+    setSaving(true)
+    setError("")
+    try {
+      const updated = await api.updateUser(profile.userId, {
+        nickname: name.trim(),
+        email: email.trim(),
+      })
+      setProfile((p) => ({ ...p, name: updated.nickname || updated.name, email: updated.email, avatar }))
+      setSaved(true)
+      setTimeout(() => router.back(), 800)
+    } catch (e: any) {
+      setError(e?.message || "저장하지 못했어요. 다시 시도해주세요.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -70,11 +94,15 @@ export default function ProfileEditPage() {
         </div>
       </div>
 
-      <Button variant="brand" size="lg" className="w-full mt-8" onClick={save}>
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+
+      <Button variant="brand" size="lg" className="w-full mt-8" onClick={save} disabled={saving}>
         {saved ? (
           <>
             <Check className="h-5 w-5" /> 저장됨
           </>
+        ) : saving ? (
+          "저장 중..."
         ) : (
           "변경사항 저장"
         )}
