@@ -29,12 +29,6 @@ export default function OnboardingPage() {
       <main className="min-h-dvh flex flex-col px-6 pt-12 pb-8">
         <div className="flex items-center justify-between">
           <FitchLogo />
-          <Link
-              href="/login"
-              className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            건너뛰기
-          </Link>
         </div>
 
         <div className="mt-12 flex-1 flex flex-col">
