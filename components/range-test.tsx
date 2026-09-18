@@ -71,13 +71,13 @@ export function RangeTest({
     })
   }
 
-  // 진행바가 다 차면(=2초 녹음 완료) 녹음만 멈추고, 다음 행동은 버튼으로 선택하게 함
+  // 진행바가 다 차면(=3초 녹음 완료) 녹음만 멈추고, 다음 행동은 버튼으로 선택하게 함
   React.useEffect(() => {
     if (!recording) return
     setProgress(0)
     const interval = setInterval(() => {
       setProgress((p) => {
-        const next = Math.min(100, p + 4)
+        const next = Math.min(100, p + 2)
         if (next >= 100) {
           clearInterval(interval)
           setRecording(false)
@@ -89,7 +89,7 @@ export function RangeTest({
         }
         return next
       })
-    }, 80)
+    }, 60)
     return () => clearInterval(interval)
   }, [recording, phase])
 
@@ -244,7 +244,7 @@ export function RangeTest({
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold">
-                  {recording ? "녹음 중... 편하게 2초만 유지해주세요" : "측정 완료"}
+                  {recording ? "녹음 중... 편하게 3초만 유지해주세요" : "측정 완료"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   현재 감지된 음 <span className="text-primary font-bold">{note}</span>
@@ -260,7 +260,7 @@ export function RangeTest({
           <div className="w-full space-y-3">
             {recording ? (
                 <p className="text-xs text-muted-foreground">
-                  아무 음이나 편하게 &lsquo;아~&rsquo; 하고 2초 정도 유지해주세요. 측정이 끝나면 버튼이 나타나요.
+                  아무 음이나 편하게 &lsquo;아~&rsquo; 하고 3초 정도 유지해주세요. 측정이 끝나면 버튼이 나타나요.
                 </p>
             ) : (
                 <>
