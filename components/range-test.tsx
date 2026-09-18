@@ -71,7 +71,7 @@ export function RangeTest({
     })
   }
 
-  // 진행바가 다 차면(=2초 녹음 완료) 버튼 없이 자동으로 다음 단계로 넘어감
+  // 진행바가 다 차면(=2초 녹음 완료) 녹음만 멈추고, 다음 행동은 버튼으로 선택하게 함
   React.useEffect(() => {
     if (!recording) return
     setProgress(0)
@@ -80,8 +80,11 @@ export function RangeTest({
         const next = Math.min(100, p + 4)
         if (next >= 100) {
           clearInterval(interval)
-          if (phase === "low" || phase === "high") {
-            void handlePhaseComplete(phase)
+          setRecording(false)
+          if (phase === "low") {
+            setLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
+          } else if (phase === "high") {
+            setHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
           }
         }
         return next
@@ -90,13 +93,17 @@ export function RangeTest({
     return () => clearInterval(interval)
   }, [recording, phase])
 
-  async function handlePhaseComplete(currentPhase: "low" | "high") {
-    if (currentPhase === "low") {
-      setLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
-      // 녹음은 끊기지 않고 이어서 → 곧바로 높은 음 단계로 전환
+  function handleRetry() {
+    setProgress(0)
+    setRecording(true)
+  }
+
+  async function handleAdvance() {
+    if (phase === "low") {
       setPhase("high")
-    } else {
-      setHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
+      setProgress(0)
+      setRecording(true)
+    } else if (phase === "high") {
       setRecording(false)
       await stopRealRecording()
       setPhase("analyzing")
@@ -244,7 +251,7 @@ export function RangeTest({
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold">
-                  {recording ? "녹음 중... 편하게 2초만 유지해주세요" : "녹음 대기"}
+                  {recording ? "녹음 중... 편하게 2초만 유지해주세요" : "측정 완료"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   현재 감지된 음 <span className="text-primary font-bold">{note}</span>
@@ -255,20 +262,27 @@ export function RangeTest({
             <Progress value={progress} />
           </div>
 
-          <p className="text-xs text-muted-foreground max-w-xs">
-            아무 음이나 편하게 &lsquo;아~&rsquo; 하고 2초 정도 유지해주세요. 진행바가 다 차면 자동으로 다음 단계로 넘어가요.
-          </p>
-
           {micNotice && <p className="text-xs text-muted-foreground">{micNotice}</p>}
 
-          <Button
-              variant="ghost"
-              size="lg"
-              className="w-full"
-              onClick={() => setProgress(0)}
-          >
-            <RotateCcw className="h-4 w-4" /> 다시 녹음
-          </Button>
+          <div className="w-full space-y-3">
+            {recording ? (
+                <p className="text-xs text-muted-foreground">
+                  아무 음이나 편하게 &lsquo;아~&rsquo; 하고 2초 정도 유지해주세요. 측정이 끝나면 버튼이 나타나요.
+                </p>
+            ) : (
+                <>
+                  <p className="text-xs font-semibold text-primary">
+                    측정 완료! {note} 근처로 감지됐어요.
+                  </p>
+                  <Button variant="outline" size="lg" className="w-full" onClick={handleRetry}>
+                    <RotateCcw className="h-4 w-4" /> 다시 측정하기
+                  </Button>
+                  <Button variant="brand" size="lg" className="w-full" onClick={handleAdvance}>
+                    {phase === "low" ? "높은 음 측정하러 가기" : "분석 시작하기"}
+                  </Button>
+                </>
+            )}
+          </div>
         </div>
     )
   }
