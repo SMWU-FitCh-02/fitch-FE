@@ -16,10 +16,10 @@ const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", 
 const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
 
 export function RangeTest({
-  onComplete,
-  initialPhase = "intro",
-  userId,
-}: {
+                            onComplete,
+                            initialPhase = "intro",
+                            userId,
+                          }: {
   onComplete: (rec: RangeRecord) => void
   initialPhase?: Phase
   userId?: number
@@ -39,40 +39,39 @@ export function RangeTest({
   const recordedBlobRef = React.useRef<Blob | null>(null)
 
   async function startRealRecording() {
-      if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        streamRef.current = stream
-        const mr = new MediaRecorder(stream)
-        chunksRef.current = []
-        mr.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data)
-        }
-        mr.start(1000)   // ← 핵심 수정: 1초마다 청크 생성
-        mediaRecorderRef.current = mr
-      } catch {
-        setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
+    if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const mr = new MediaRecorder(stream)
+      chunksRef.current = []
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
       }
+      mr.start(1000)   // ← 1초마다 청크 생성
+      mediaRecorderRef.current = mr
+    } catch {
+      setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
+    }
   }
 
   function stopRealRecording(): Promise<void> {
-      return new Promise((resolve) => {
-        const mr = mediaRecorderRef.current
-        if (!mr) { resolve(); return }
-        mr.onstop = () => {
-          streamRef.current?.getTracks().forEach((t) => t.stop())
-          mediaRecorderRef.current = null
-          streamRef.current = null
-          recordedBlobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
-          chunksRef.current = []
-          resolve()
-        }
-        try { mr.stop() } catch { resolve() }
-      })
+    return new Promise((resolve) => {
+      const mr = mediaRecorderRef.current
+      if (!mr) { resolve(); return }
+      mr.onstop = () => {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        mediaRecorderRef.current = null
+        streamRef.current = null
+        recordedBlobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
+        chunksRef.current = []
+        resolve()
+      }
+      try { mr.stop() } catch { resolve() }
+    })
   }
 
-
-  // simulate recording capture
+  // 진행바가 다 차면(=2초 녹음 완료) 버튼 없이 자동으로 다음 단계로 넘어감
   React.useEffect(() => {
     if (!recording) return
     setProgress(0)
@@ -81,12 +80,8 @@ export function RangeTest({
         const next = Math.min(100, p + 4)
         if (next >= 100) {
           clearInterval(interval)
-          setRecording(false)
-          // advance pitch detection
-          if (phase === "low") {
-            setLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
-          } else if (phase === "high") {
-            setHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
+          if (phase === "low" || phase === "high") {
+            void handlePhaseComplete(phase)
           }
         }
         return next
@@ -94,6 +89,19 @@ export function RangeTest({
     }, 80)
     return () => clearInterval(interval)
   }, [recording, phase])
+
+  async function handlePhaseComplete(currentPhase: "low" | "high") {
+    if (currentPhase === "low") {
+      setLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
+      // 녹음은 끊기지 않고 이어서 → 곧바로 높은 음 단계로 전환
+      setPhase("high")
+    } else {
+      setHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
+      setRecording(false)
+      await stopRealRecording()
+      setPhase("analyzing")
+    }
+  }
 
   // when phase = analyzing, try the real backend first, fall back to a simulated result
   React.useEffect(() => {
@@ -151,14 +159,6 @@ export function RangeTest({
     if (p === "low") await startRealRecording()
   }
 
-  async function nextStage() {
-      if (phase === "low") setPhase("high")
-      else if (phase === "high") {
-        await stopRealRecording()
-        setPhase("analyzing")
-      }
-  }
-
   React.useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -167,36 +167,36 @@ export function RangeTest({
 
   if (phase === "intro") {
     return (
-      <div className="flex flex-col items-center text-center gap-6">
-        <div className="relative h-44 w-44">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-30 blur-2xl" />
-          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center">
-            <Mic className="h-14 w-14 text-white" />
-          </div>
-        </div>
-        <div>
-          <h2 className="text-xl font-extrabold">3분 음역대 테스트</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-            낮은 소리에서 점점 높이 올려보세요. AI가 당신의 음역대를 분석합니다.
-          </p>
-        </div>
-        <div className="grid grid-cols-3 gap-3 w-full text-center text-xs">
-          {[
-            { i: "1️⃣", t: "낮은 음", d: "‘아~’ 천천히" },
-            { i: "2️⃣", t: "높은 음", d: "점점 더 높게" },
-            { i: "3️⃣", t: "분석", d: "AI 결과" },
-          ].map((step) => (
-            <div key={step.t} className="rounded-[12px] bg-surface/60 border border-border/60 p-3">
-              <div className="text-xl">{step.i}</div>
-              <div className="mt-1 text-sm font-semibold">{step.t}</div>
-              <div className="text-[10px] text-muted-foreground">{step.d}</div>
+        <div className="flex flex-col items-center text-center gap-6">
+          <div className="relative h-44 w-44">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-30 blur-2xl" />
+            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center">
+              <Mic className="h-14 w-14 text-white" />
             </div>
-          ))}
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold">3분 음역대 테스트</h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+              낮은 소리에서 점점 높이 올려보세요. AI가 당신의 음역대를 분석합니다.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 w-full text-center text-xs">
+            {[
+              { i: "1️⃣", t: "낮은 음", d: "‘아~’ 천천히" },
+              { i: "2️⃣", t: "높은 음", d: "점점 더 높게" },
+              { i: "3️⃣", t: "분석", d: "AI 결과" },
+            ].map((step) => (
+                <div key={step.t} className="rounded-[12px] bg-surface/60 border border-border/60 p-3">
+                  <div className="text-xl">{step.i}</div>
+                  <div className="mt-1 text-sm font-semibold">{step.t}</div>
+                  <div className="text-[10px] text-muted-foreground">{step.d}</div>
+                </div>
+            ))}
+          </div>
+          <Button variant="brand" size="lg" className="w-full" onClick={() => startStep("low")}>
+            시작하기 <Mic className="h-5 w-5" />
+          </Button>
         </div>
-        <Button variant="brand" size="lg" className="w-full" onClick={() => startStep("low")}>
-          시작하기 <Mic className="h-5 w-5" />
-        </Button>
-      </div>
     )
   }
 
@@ -205,158 +205,156 @@ export function RangeTest({
     const idx = phase === "low" ? lowIdx : highIdx
     const note = ladder[idx]
     return (
-      <div className="flex flex-col items-center text-center gap-6">
-        <div className="text-xs text-muted-foreground">
-          {phase === "low" ? "단계 1 / 2 · 가장 낮은 음을 찾고 있어요" : "단계 2 / 2 · 가장 높은 음을 찾고 있어요"}
-        </div>
-        <div className="relative w-full">
-          {/* note ladder */}
-          <div className="flex justify-center items-end gap-1.5 h-44">
-            {ladder.map((n, i) => (
-              <div key={n} className="flex flex-col items-center gap-1">
-                <div
+        <div className="flex flex-col items-center text-center gap-6">
+          <div className="text-xs text-muted-foreground">
+            {phase === "low" ? "단계 1 / 2 · 가장 낮은 음을 찾고 있어요" : "단계 2 / 2 · 가장 높은 음을 찾고 있어요"}
+          </div>
+          <div className="relative w-full">
+            {/* note ladder */}
+            <div className="flex justify-center items-end gap-1.5 h-44">
+              {ladder.map((n, i) => (
+                  <div key={n} className="flex flex-col items-center gap-1">
+                    <div
+                        className={cn(
+                            "w-3 rounded-full transition-all",
+                            i <= idx
+                                ? "bg-gradient-to-t from-primary to-brand"
+                                : "bg-muted",
+                            i === idx && recording ? "ring-2 ring-primary/40" : ""
+                        )}
+                        style={{ height: `${20 + i * 8}px` }}
+                    />
+                    {i === idx && (
+                        <div className="text-[10px] font-bold text-primary">{n}</div>
+                    )}
+                  </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[14px] bg-surface-elevated/70 border border-border/60 p-5 w-full">
+            <div className="flex items-center gap-3 mb-3">
+              <div
                   className={cn(
-                    "w-3 rounded-full transition-all",
-                    i <= idx
-                      ? "bg-gradient-to-t from-primary to-brand"
-                      : "bg-muted",
-                    i === idx && recording ? "ring-2 ring-primary/40" : ""
+                      "h-10 w-10 rounded-full grid place-items-center",
+                      recording ? "bg-destructive text-destructive-foreground" : "bg-muted text-muted-foreground"
                   )}
-                  style={{ height: `${20 + i * 8}px` }}
-                />
-                {i === idx && (
-                  <div className="text-[10px] font-bold text-primary">{n}</div>
-                )}
+              >
+                {recording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[14px] bg-surface-elevated/70 border border-border/60 p-5 w-full">
-          <div className="flex items-center gap-3 mb-3">
-            <div
-              className={cn(
-                "h-10 w-10 rounded-full grid place-items-center",
-                recording ? "bg-destructive text-destructive-foreground" : "bg-muted text-muted-foreground"
-              )}
-            >
-              {recording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              <div className="flex-1 text-left">
+                <div className="text-sm font-semibold">
+                  {recording ? "녹음 중... 편하게 2초만 유지해주세요" : "녹음 대기"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  현재 감지된 음 <span className="text-primary font-bold">{note}</span>
+                </div>
+              </div>
+              <WaveBars active={recording} />
             </div>
-            <div className="flex-1 text-left">
-              <div className="text-sm font-semibold">
-                {recording ? "녹음 중..." : "녹음 대기"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                현재 감지된 음 <span className="text-primary font-bold">{note}</span>
-              </div>
-            </div>
-            <WaveBars active={recording} />
+            <Progress value={progress} />
           </div>
-          <Progress value={progress} />
-        </div>
 
-        {micNotice && <p className="text-xs text-muted-foreground">{micNotice}</p>}
+          <p className="text-xs text-muted-foreground max-w-xs">
+            아무 음이나 편하게 &lsquo;아~&rsquo; 하고 2초 정도 유지해주세요. 진행바가 다 차면 자동으로 다음 단계로 넘어가요.
+          </p>
 
-        <div className="w-full space-y-3">
-          {!recording ? (
-            <Button variant="brand" size="lg" className="w-full" onClick={() => setRecording(true)}>
-              <Mic className="h-5 w-5" /> 한 번 더 녹음
-            </Button>
-          ) : (
-            <Button variant="outline" size="lg" className="w-full" onClick={() => setRecording(false)}>
-              녹음 중지
-            </Button>
-          )}
-          <Button variant="ghost" size="lg" className="w-full" onClick={nextStage} disabled={recording}>
-            {phase === "low" ? "다음 단계로 (높은 음)" : "분석 시작"}
+          {micNotice && <p className="text-xs text-muted-foreground">{micNotice}</p>}
+
+          <Button
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => setProgress(0)}
+          >
+            <RotateCcw className="h-4 w-4" /> 다시 녹음
           </Button>
         </div>
-      </div>
     )
   }
 
   if (phase === "analyzing") {
     return (
-      <div className="flex flex-col items-center text-center gap-6 py-10">
-        <div className="relative h-32 w-32">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-30 blur-2xl animate-pulse" />
-          <div className="absolute inset-2 rounded-full bg-surface grid place-items-center">
-            <WaveBars active />
+        <div className="flex flex-col items-center text-center gap-6 py-10">
+          <div className="relative h-32 w-32">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-30 blur-2xl animate-pulse" />
+            <div className="absolute inset-2 rounded-full bg-surface grid place-items-center">
+              <WaveBars active />
+            </div>
+          </div>
+          <div>
+            <div className="text-lg font-bold">AI가 당신의 목소리를 분석 중</div>
+            <div className="mt-1 text-xs text-muted-foreground">잠시만 기다려주세요...</div>
           </div>
         </div>
-        <div>
-          <div className="text-lg font-bold">AI가 당신의 목소리를 분석 중</div>
-          <div className="mt-1 text-xs text-muted-foreground">잠시만 기다려주세요...</div>
-        </div>
-      </div>
     )
   }
 
   // done
   return (
-    <div className="flex flex-col items-center text-center gap-5">
-      <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center text-3xl">
-        🎉
-      </div>
-      <div>
-        <h2 className="text-xl font-extrabold">분석 완료!</h2>
-        <p className="mt-1 text-sm text-muted-foreground">당신의 음역대는...</p>
-      </div>
-      <div className="w-full rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-5">
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <div className="text-[10px] text-muted-foreground">최저음</div>
-            <div className="text-2xl font-extrabold text-primary">{result?.lowestNote}</div>
+      <div className="flex flex-col items-center text-center gap-5">
+        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center text-3xl">
+          🎉
+        </div>
+        <div>
+          <h2 className="text-xl font-extrabold">분석 완료!</h2>
+          <p className="mt-1 text-sm text-muted-foreground">당신의 음역대는...</p>
+        </div>
+        <div className="w-full rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-5">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="text-[10px] text-muted-foreground">최저음</div>
+              <div className="text-2xl font-extrabold text-primary">{result?.lowestNote}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-muted-foreground">편한 고음</div>
+              <div className="text-2xl font-extrabold">{result?.comfortableHigh}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-muted-foreground">최고음</div>
+              <div className="text-2xl font-extrabold text-brand">{result?.highestNote}</div>
+            </div>
           </div>
-          <div>
-            <div className="text-[10px] text-muted-foreground">편한 고음</div>
-            <div className="text-2xl font-extrabold">{result?.comfortableHigh}</div>
-          </div>
-          <div>
-            <div className="text-[10px] text-muted-foreground">최고음</div>
-            <div className="text-2xl font-extrabold text-brand">{result?.highestNote}</div>
+          <div className="mt-4 text-xs text-muted-foreground">
+            음색 · {labelForTone(result?.voiceTone)}
           </div>
         </div>
-        <div className="mt-4 text-xs text-muted-foreground">
-          음색 · {labelForTone(result?.voiceTone)}
-        </div>
-      </div>
-      <div className="rounded-[12px] bg-surface/70 border border-border/60 p-4 w-full text-left">
-        <div className="flex gap-2">
-          <Music2 className="h-4 w-4 text-primary mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold">이 음역대로 부르기 좋은 노래</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {result?.highestNote} 안팎의 곡들을 추천해드릴게요.
+        <div className="rounded-[12px] bg-surface/70 border border-border/60 p-4 w-full text-left">
+          <div className="flex gap-2">
+            <Music2 className="h-4 w-4 text-primary mt-0.5" />
+            <div>
+              <div className="text-sm font-semibold">이 음역대로 부르기 좋은 노래</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {result?.highestNote} 안팎의 곡들을 추천해드릴게요.
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="w-full space-y-2">
-        <Button
-          variant="brand"
-          size="lg"
-          className="w-full"
-          onClick={() => result && onComplete(result)}
-        >
-          결과 저장하고 시작하기
-        </Button>
-        <Button
-          variant="ghost"
-          size="lg"
-          className="w-full"
-          onClick={() => {
-            setPhase("intro")
-            setLowIdx(0)
-            setHighIdx(0)
-            setProgress(0)
-          }}
-        >
-          <RotateCcw className="h-4 w-4" /> 다시 측정
-        </Button>
+        <div className="w-full space-y-2">
+          <Button
+              variant="brand"
+              size="lg"
+              className="w-full"
+              onClick={() => result && onComplete(result)}
+          >
+            결과 저장하고 시작하기
+          </Button>
+          <Button
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => {
+                setPhase("intro")
+                setLowIdx(0)
+                setHighIdx(0)
+                setProgress(0)
+              }}
+          >
+            <RotateCcw className="h-4 w-4" /> 다시 측정
+          </Button>
+        </div>
       </div>
-    </div>
   )
 }
 
