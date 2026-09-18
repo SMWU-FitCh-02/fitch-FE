@@ -17,8 +17,7 @@ export function BottomNav() {
   const pathname = usePathname() ?? ""
   return (
     <nav className="sticky bottom-0 left-0 right-0 z-30 mt-auto">
-      <div className="mx-3 mb-3 rounded-[16px] bg-surface-elevated/85 backdrop-blur border border-border/70 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)]">
-        <ul className="grid grid-cols-5">
+      <div className="bg-surface-elevated/85 backdrop-blur border-t border-border/70 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)]">        <ul className="grid grid-cols-5">
           {items.map((it) => {
             const active = pathname === it.href || pathname.startsWith(it.href + "/")
             const Icon = it.icon
