@@ -15,6 +15,12 @@ type Phase = "intro" | "low" | "high" | "comfortable" | "analyzing" | "done"
 const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3"]
 const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
 
+function shiftDownInHighLadder(note: string, steps: number) {
+  const i = HIGH_LADDER.indexOf(note)
+  if (i === -1) return note
+  return HIGH_LADDER[Math.max(0, i - steps)]
+}
+
 export function RangeTest({
                             onComplete,
                             initialPhase = "intro",
@@ -129,7 +135,7 @@ export function RangeTest({
             testedAt: res.measuredAt || new Date().toISOString(),
             lowestNote: res.minNoteLabel || lowest,
             highestNote: res.maxNoteLabel || highest,
-            comfortableHigh: res.maxNoteLabel || comfortable,
+            comfortableHigh: res.maxNoteLabel ? shiftDownInHighLadder(res.maxNoteLabel, 2) : comfortable,
             voiceTone: tones[Math.floor(Math.random() * tones.length)],
           }
         } catch {
