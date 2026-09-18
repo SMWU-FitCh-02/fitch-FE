@@ -216,26 +216,15 @@ export function RangeTest({
           <div className="text-xs text-muted-foreground">
             {phase === "low" ? "단계 1 / 2 · 가장 낮은 음을 찾고 있어요" : "단계 2 / 2 · 가장 높은 음을 찾고 있어요"}
           </div>
-          <div className="relative w-full">
-            {/* note ladder */}
-            <div className="flex justify-center items-end gap-1.5 h-44">
-              {ladder.map((n, i) => (
-                  <div key={n} className="flex flex-col items-center gap-1">
-                    <div
-                        className={cn(
-                            "w-3 rounded-full transition-all",
-                            i <= idx
-                                ? "bg-gradient-to-t from-primary to-brand"
-                                : "bg-muted",
-                            i === idx && recording ? "ring-2 ring-primary/40" : ""
-                        )}
-                        style={{ height: `${20 + i * 8}px` }}
-                    />
-                    {i === idx && (
-                        <div className="text-[10px] font-bold text-primary">{n}</div>
-                    )}
-                  </div>
-              ))}
+          <div className="relative h-40 w-40">
+            <div
+                className={cn(
+                    "absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-25 blur-2xl transition-opacity",
+                    recording ? "animate-pulse opacity-40" : "opacity-20"
+                )}
+            />
+            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center">
+              <div className="text-white text-3xl font-extrabold">{note}</div>
             </div>
           </div>
 
