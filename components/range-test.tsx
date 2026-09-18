@@ -214,13 +214,10 @@ export function RangeTest({
   }
 
   if (phase === "low" || phase === "high") {
-    const ladder = phase === "low" ? LOW_LADDER : HIGH_LADDER
-    const idx = phase === "low" ? lowIdx : highIdx
-    const note = ladder[idx]
     return (
         <div className="flex flex-col items-center text-center gap-6">
           <div className="text-xs text-muted-foreground">
-            {phase === "low" ? "단계 1 / 2 · 가장 낮은 음을 찾고 있어요" : "단계 2 / 2 · 가장 높은 음을 찾고 있어요"}
+            {phase === "low" ? "단계 1 / 2 · 낮은 음 녹음 중" : "단계 2 / 2 · 높은 음 녹음 중"}
           </div>
           <div className="relative h-40 w-40">
             <div
@@ -233,7 +230,7 @@ export function RangeTest({
               {recording ? (
                   <Mic className="h-12 w-12 text-white" />
               ) : (
-                  <div className="text-white text-3xl font-extrabold">{note}</div>
+                  <Music2 className="h-12 w-12 text-white" />
               )}
             </div>
           </div>
@@ -250,10 +247,10 @@ export function RangeTest({
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold">
-                  {recording ? "녹음 중... 편하게 3초만 유지해주세요" : "측정 완료"}
+                  {recording ? "녹음 중... 편하게 3초만 유지해주세요" : "녹음 완료"}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  현재 감지된 음 <span className="text-primary font-bold">{note}</span>
+                  {phase === "low" ? "가장 낮은 음을 편하게 내주세요" : "가장 높은 음을 편하게 내주세요"}
                 </div>
               </div>
               <WaveBars active={recording} />
@@ -266,18 +263,18 @@ export function RangeTest({
           <div className="w-full space-y-3">
             {recording ? (
                 <p className="text-xs text-muted-foreground">
-                  아무 음이나 편하게 &lsquo;아~&rsquo; 하고 3초 정도 유지해주세요. 측정이 끝나면 버튼이 나타나요.
+                  아무 음이나 편하게 &lsquo;아~&rsquo; 하고 3초 정도 유지해주세요. 녹음이 끝나면 버튼이 나타나요.
                 </p>
             ) : (
                 <>
                   <p className="text-xs font-semibold text-primary">
-                    측정 완료! {note} 근처로 감지됐어요.
+                    {phase === "low" ? "낮은 음 녹음 완료!" : "높은 음 녹음 완료!"}
                   </p>
                   <Button variant="outline" size="lg" className="w-full" onClick={handleRetry}>
-                    <RotateCcw className="h-4 w-4" /> 다시 측정하기
+                    <RotateCcw className="h-4 w-4" /> 다시 녹음하기
                   </Button>
                   <Button variant="brand" size="lg" className="w-full" onClick={handleAdvance}>
-                    {phase === "low" ? "높은 음 측정하러 가기" : "분석 시작하기"}
+                    {phase === "low" ? "높은 음 녹음하러 가기" : "분석 시작하기"}
                   </Button>
                 </>
             )}
