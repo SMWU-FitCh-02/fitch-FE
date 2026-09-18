@@ -224,7 +224,11 @@ export function RangeTest({
                 )}
             />
             <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center">
-              <div className="text-white text-3xl font-extrabold">{note}</div>
+              {recording ? (
+                  <Mic className="h-12 w-12 text-white" />
+              ) : (
+                  <div className="text-white text-3xl font-extrabold">{note}</div>
+              )}
             </div>
           </div>
 
