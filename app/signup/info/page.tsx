@@ -217,11 +217,17 @@ export default function InfoPage() {
                 inputMode="numeric"
                 placeholder="YYYY-MM-DD"
                 value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 8)
+                  let formatted = digits
+                  if (digits.length > 4) formatted = `${digits.slice(0, 4)}-${digits.slice(4)}`
+                  if (digits.length > 6) formatted = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`
+                  setBirthDate(formatted)
+                }}
                 maxLength={10}
             />
             {birthDate.length > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) && (
-                <p className="text-xs text-destructive">YYYY-MM-DD 형식으로 입력해주세요. (예: 2000-01-15)</p>
+                <p className="text-xs text-destructive">생년월일 8자리를 입력해주세요. (예: 20000115)</p>
             )}
           </div>
 
