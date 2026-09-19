@@ -386,3 +386,23 @@ export function similarArtistSongs(artistName: string, limit = 10): Song[] {
 export function uniqueArtists(): string[] {
   return Array.from(new Set(SONGS.map((s) => s.artist)))
 }
+
+
+const KOREAN_SOLFEGE: Record<string, string> = {
+  C: "도", "C#": "도#", Db: "도#",
+  D: "레", "D#": "레#", Eb: "레#",
+  E: "미",
+  F: "파", "F#": "파#", Gb: "파#",
+  G: "솔", "G#": "솔#", Ab: "솔#",
+  A: "라", "A#": "라#", Bb: "라#",
+  B: "시",
+}
+
+// "C4" -> "4옥타브 도", "G#4" -> "4옥타브 솔#"
+export function noteToKorean(note: string): string {
+  const match = note.match(/^([A-G][#b]?)(-?\d+)$/)
+  if (!match) return note
+  const [, pitch, octave] = match
+  const syllable = KOREAN_SOLFEGE[pitch] ?? pitch
+  return `${octave}옥타브 ${syllable}`
+}

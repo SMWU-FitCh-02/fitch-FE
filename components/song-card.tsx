@@ -8,14 +8,15 @@ import type { Song } from "@/lib/songs"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { noteToKorean } from "@/lib/songs"
 
 export function difficultyLabel(d: 1 | 2 | 3 | 4 | 5) {
   const map: Record<number, { label: string; variant: "success" | "warning" | "default" | "secondary" | "destructive" }> = {
-    1: { label: "쉬움", variant: "success" },
-    2: { label: "보통", variant: "secondary" },
-    3: { label: "보통+", variant: "default" },
-    4: { label: "어려움", variant: "warning" },
-    5: { label: "극상", variant: "destructive" },
+    1: { label: "⭐️", variant: "success" },
+    2: { label: "⭐⭐", variant: "secondary" },
+    3: { label: "⭐⭐⭐", variant: "default" },
+    4: { label: "⭐⭐⭐⭐", variant: "warning" },
+    5: { label: "⭐⭐⭐⭐⭐", variant: "destructive" },
   }
   return map[d]
 }
@@ -64,8 +65,7 @@ export function SongCard({
             <Badge variant={diff.variant} className="text-[10px] py-0">
               {diff.label}
             </Badge>
-            <span className="text-[10px] text-muted-foreground">최고음 {song.highestNote}</span>
-          </div>
+            <span className="text-[10px] text-muted-foreground">최고음 {noteToKorean(song.highestNote)}</span>          </div>
         )}
       </Link>
       <button

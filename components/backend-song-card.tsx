@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { SongResponse } from "@/lib/api"
 import { difficultyTier, colorFromString } from "@/lib/song-display"
 import { fetchArtwork } from "@/lib/artwork-cache"
+import { noteToKorean } from "@/lib/songs"
 
 export function BackendSongCard({ song }: { song: SongResponse }) {
   const tier = difficultyTier(song.maxNote)
@@ -47,8 +48,7 @@ export function BackendSongCard({ song }: { song: SongResponse }) {
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tier.className}`}>
             {tier.label}
           </span>
-          <span className="text-[10px] text-muted-foreground">최고음 {song.maxNoteLabel}</span>
-          {song.genre && <span className="text-[10px] text-muted-foreground">· {song.genre}</span>}
+          <span className="text-[10px] text-muted-foreground">최고음 {noteToKorean(song.maxNoteLabel)}</span>          {song.genre && <span className="text-[10px] text-muted-foreground">· {song.genre}</span>}
         </div>
       </div>
     </Link>

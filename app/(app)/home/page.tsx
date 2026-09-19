@@ -7,6 +7,7 @@ import { FitchLogo, WaveBars } from "@/components/fitch-logo"
 import { Button } from "@/components/ui/button"
 import { useStore } from "@/lib/store"
 import { SONGS } from "@/lib/songs"
+import { noteToKorean } from "@/lib/songs"
 import { SongCard } from "@/components/song-card"
 import { fetchKoreaTopSongs, type ChartEntry } from "@/lib/itunes"
 import { ChartSongRow } from "@/components/chart-song-row"
@@ -96,13 +97,13 @@ export default function HomePage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="text-[11px] text-primary font-bold">내 음역대</div>
-                            <div className="mt-1 flex items-baseline gap-2">
-                                <span className="text-3xl font-extrabold">{profile.range!.lowestNote}</span>
-                                <span className="text-muted-foreground">—</span>
-                                <span className="text-3xl font-extrabold text-brand">{profile.range!.highestNote}</span>
+                            <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                                <span className="text-lg font-extrabold">{noteToKorean(profile.range!.lowestNote)}</span>
+                                <span className="text-muted-foreground text-sm">—</span>
+                                <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
                             </div>
                             <div className="mt-1 text-[11px] text-muted-foreground">
-                                편한 고음 {profile.range!.comfortableHigh} · {fmtTone(profile.range!.voiceTone)}
+                                편한 고음 {noteToKorean(profile.range!.comfortableHigh)} · {fmtTone(profile.range!.voiceTone)}
                             </div>
                         </div>
                         <WaveBars />

@@ -17,6 +17,7 @@ import {Button} from "@/components/ui/button"
 import {Separator} from "@/components/ui/separator"
 import {clearTokens, api} from "@/lib/api"
 import * as React from "react"
+import { noteToKorean } from "@/lib/songs"
 
 export default function MyPage() {
     const router = useRouter()
@@ -112,8 +113,7 @@ export default function MyPage() {
                         {hasRange && (
                             <div
                                 className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/15 text-primary font-bold">
-                                내 음역대 {profile.range!.lowestNote} – {profile.range!.highestNote}
-                            </div>
+                                내 음역대 {noteToKorean(profile.range!.lowestNote)} – {noteToKorean(profile.range!.highestNote)}                            </div>
                         )}
                     </div>
                 </div>
