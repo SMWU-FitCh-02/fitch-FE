@@ -72,6 +72,13 @@ export default function ChartPage() {
         filteredLen: filtered.length,
     })
 
+    if (chart.length > 0 && Object.keys(genderMap).length > 0) {
+        const unmatched = chart
+            .filter((c) => genderMap[c.artist] === undefined)
+            .map((c) => c.artist)
+        console.log("UNMATCHED ARTISTS", Array.from(new Set(unmatched)))
+    }
+
     const top3 = filtered.slice(0, 3)
     const rest = filtered.slice(3)
 
