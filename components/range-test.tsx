@@ -315,15 +315,15 @@ export function RangeTest({
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <div className="text-[10px] text-muted-foreground">최저음</div>
-              <div className="text-2xl font-extrabold text-primary">{result?.lowestNote && noteToKorean(result.lowestNote)}</div>
+              <div className="text-lg font-extrabold text-primary">{result?.lowestNote && noteToKorean(result.lowestNote)}</div>
             </div>
             <div>
               <div className="text-[10px] text-muted-foreground">편한 고음</div>
-              <div className="text-2xl font-extrabold">{result?.comfortableHigh && noteToKorean(result.comfortableHigh)}</div>
+              <div className="text-lg font-extrabold">{result?.comfortableHigh && noteToKorean(result.comfortableHigh)}</div>
             </div>
             <div>
               <div className="text-[10px] text-muted-foreground">최고음</div>
-              <div className="text-2xl font-extrabold text-brand">{result?.highestNote && noteToKorean(result.highestNote)}</div>            </div>
+              <div className="text-lg font-extrabold text-brand">{result?.highestNote && noteToKorean(result.highestNote)}</div>            </div>
           </div>
         </div>
         <div className="rounded-[12px] bg-surface/70 border border-border/60 p-4 w-full text-left">
