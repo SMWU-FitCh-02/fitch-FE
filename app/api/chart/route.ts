@@ -30,6 +30,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Melon renders spaces inside artist/title text as non-breaking spaces
+// (U+00A0, "&nbsp;") wherever it wants to prevent line-wrapping — visually
+// identical to a normal space, but a different character. Our DB (and
+// Apple's feed) use plain spaces, so anything scraped from Melon has to be
+// normalized here or every downstream string comparison silently fails to
+// match (e.g. "Lady Gaga" scraped as "Lady Gaga" !== "Lady Gaga").
+function cleanText(s: string): string {
+  return s.replace(/ /g, " ").replace(/\s+/g, " ").trim()
+}
+
 async function fetchMelonChart(limit: number) {
   const res = await fetch("https://www.melon.com/chart/index.htm", {
     headers: {
@@ -48,8 +58,8 @@ async function fetchMelonChart(limit: number) {
   $("tr.lst50, tr.lst100").each((_, el) => {
     if (results.length >= limit) return
     const rankText = $(el).find("td:nth-child(2) .rank").first().text().trim()
-    const title = $(el).find(".rank01 a").first().text().trim()
-    const artist = $(el).find(".rank02 a").first().text().trim()
+    const title = cleanText($(el).find(".rank01 a").first().text())
+    const artist = cleanText($(el).find(".rank02 a").first().text())
     const albumImg = $(el).find(".image_typeAll img").attr("src") || ""
     const songId = $(el).attr("data-song-no") || String(results.length + 1)
 
