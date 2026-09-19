@@ -1,24 +1,3 @@
-
-양세영의 MacBook Pro, 연결됨
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Home page · TSX
 "use client"
 
 import * as React from "react"
@@ -241,4 +220,3 @@ function greetByHour() {
     if (h < 18) return "오늘 하루도 화이팅 ☕"
     return "오늘 밤은 노래 한 곡 어때요 🎶"
 }
-
