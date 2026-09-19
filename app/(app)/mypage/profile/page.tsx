@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Check, Camera, Image as ImageIcon } from "lucide-react"
+import { Check, ImagePlus } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,9 +19,6 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "OTHER", label: "선택 안 함" },
 ]
 
-// keep uploaded photos reasonably small so they don't bloat the DB /
-// request payload — resize to at most 512px on the long edge and
-// re-encode as JPEG
 async function fileToResizedDataUrl(file: File, maxSize = 512, quality = 0.85): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -62,8 +59,7 @@ export default function ProfileEditPage() {
   const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  const cameraInputRef = React.useRef<HTMLInputElement>(null)
-  const galleryInputRef = React.useRef<HTMLInputElement>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     if (!profile.userId) return
@@ -85,7 +81,7 @@ export default function ProfileEditPage() {
 
   async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    e.target.value = "" // allow picking the same file again later
+    e.target.value = ""
     if (!file) return
     try {
       const resized = await fileToResizedDataUrl(file)
@@ -145,17 +141,9 @@ export default function ProfileEditPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => fileInputRef.current?.click()}
             >
-              <Camera className="h-4 w-4" /> 촬영하기
-            </Button>
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => galleryInputRef.current?.click()}
-            >
-              <ImageIcon className="h-4 w-4" /> 사진 선택
+              <ImagePlus className="h-4 w-4" /> 사진 선택
             </Button>
             {photo && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setPhoto(null)}>
@@ -164,18 +152,8 @@ export default function ProfileEditPage() {
             )}
           </div>
 
-          {/* capture="environment" opens the camera directly on mobile;
-            desktop browsers just fall back to the normal file picker */}
           <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleFilePicked}
-          />
-          <input
-              ref={galleryInputRef}
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               className="hidden"
