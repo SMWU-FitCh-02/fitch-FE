@@ -37,7 +37,7 @@ export type UserProfile = {
   loggedIn: boolean
 }
 
-const DEFAULT_PROFILE: UserProfile = {
+export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   username: "",
   email: "",

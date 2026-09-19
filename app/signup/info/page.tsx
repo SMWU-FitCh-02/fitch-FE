@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SignupHeader } from "@/components/signup-header"
-import { useStore } from "@/lib/store"
+import { useStore, DEFAULT_PROFILE } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { saveTokens } from "@/lib/api"
 
@@ -99,11 +99,12 @@ export default function InfoPage() {
       const loginBody = await loginRes.json()
       saveTokens(loginBody.accessToken, loginBody.refreshToken)
 
-      setProfile((p) => ({
-        ...p,
+      setProfile(() => ({
+        ...DEFAULT_PROFILE,
         name: name.trim(),
         username: username.trim(),
-        userId: registerBody?.userId ?? p.userId,
+        email: email.trim(),
+        userId: registerBody?.userId,
         loggedIn: true,
       }))
       router.push("/signup/artist-preferences")
