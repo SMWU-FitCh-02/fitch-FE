@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Mic, MicOff, Music2, RotateCcw } from "lucide-react"
+import { Mic, MicOff, Music2, RotateCcw, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { WaveBars } from "@/components/fitch-logo"
 import type { RangeRecord } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { noteToMidi } from "@/lib/songs"
 
 type Phase = "intro" | "low" | "high" | "comfortable" | "analyzing" | "done"
 
@@ -19,6 +20,35 @@ function shiftDownInHighLadder(note: string, steps: number) {
   const i = HIGH_LADDER.indexOf(note)
   if (i === -1) return note
   return HIGH_LADDER[Math.max(0, i - steps)]
+}
+
+// Plays a short sine-wave tone at the given note's pitch using the Web
+// Audio API — no audio file needed. A2==note name like "C3".
+function playGuideNote(note: string, durationMs = 1300) {
+  if (typeof window === "undefined") return
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+  if (!AudioCtx) return
+
+  const midi = noteToMidi(note)
+  const freq = 440 * Math.pow(2, (midi - 69) / 12)
+
+  const ctx = new AudioCtx()
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+
+  osc.type = "sine"
+  osc.frequency.value = freq
+
+  const now = ctx.currentTime
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(0.22, now + 0.06)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000)
+
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(now)
+  osc.stop(now + durationMs / 1000 + 0.05)
+  osc.onended = () => ctx.close()
 }
 
 export function RangeTest({
@@ -214,11 +244,33 @@ export function RangeTest({
   }
 
   if (phase === "low" || phase === "high") {
+    const currentNote = phase === "low" ? LOW_LADDER[lowIdx] : HIGH_LADDER[highIdx]
+
     return (
         <div className="flex flex-col items-center text-center gap-6">
           <div className="text-xs text-muted-foreground">
             {phase === "low" ? "단계 1 / 2 · 낮은 음 녹음 중" : "단계 2 / 2 · 높은 음 녹음 중"}
           </div>
+
+          <div className="flex items-center gap-2 rounded-full bg-surface/60 border border-border/60 px-4 py-2">
+            <span className="text-xs text-muted-foreground">목표 음</span>
+            <span className="text-sm font-extrabold text-primary">{currentNote}</span>
+            <button
+                type="button"
+                onClick={() => playGuideNote(currentNote)}
+                disabled={recording}
+                className={cn(
+                    "ml-1 h-7 w-7 grid place-items-center rounded-full transition-colors",
+                    recording
+                        ? "text-muted-foreground/40 cursor-not-allowed"
+                        : "text-primary hover:bg-primary/10"
+                )}
+                aria-label="가이드음 듣기"
+            >
+              <Volume2 className="h-4 w-4" />
+            </button>
+          </div>
+
           <div className="relative h-40 w-40">
             <div
                 className={cn(
