@@ -25,7 +25,6 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 export default function InfoPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
-
   const [name, setName] = React.useState("")
   const [username, setUsername] = React.useState("")
   const [usernameCheck, setUsernameCheck] = React.useState<CheckState>("idle")
@@ -215,6 +214,7 @@ export default function InfoPage() {
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
+                className="text-sm [&::-webkit-date-and-time-value]:text-sm [&::-webkit-datetime-edit]:text-sm"
             />
           </div>
 
