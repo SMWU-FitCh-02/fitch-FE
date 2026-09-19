@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Check } from "lucide-react"
+import { Check, Camera, Image as ImageIcon } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,37 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "OTHER", label: "선택 안 함" },
 ]
 
+// keep uploaded photos reasonably small so they don't bloat the DB /
+// request payload — resize to at most 512px on the long edge and
+// re-encode as JPEG
+async function fileToResizedDataUrl(file: File, maxSize = 512, quality = 0.85): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new window.Image()
+    el.onload = () => resolve(el)
+    el.onerror = reject
+    el.src = dataUrl
+  })
+
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+
+  const canvas = document.createElement("canvas")
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return dataUrl
+  ctx.drawImage(img, 0, 0, w, h)
+  return canvas.toDataURL("image/jpeg", quality)
+}
+
 export default function ProfileEditPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
@@ -26,18 +57,25 @@ export default function ProfileEditPage() {
   const [email, setEmail] = React.useState(profile.email)
   const [avatar, setAvatar] = React.useState(profile.avatar || "🎤")
   const [gender, setGender] = React.useState<Gender | null>(null)
+  const [photo, setPhoto] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  // load the current gender from the backend (not tracked in local profile state)
+  const cameraInputRef = React.useRef<HTMLInputElement>(null)
+  const galleryInputRef = React.useRef<HTMLInputElement>(null)
+
   React.useEffect(() => {
     if (!profile.userId) return
     let cancelled = false
     api
         .getUser(profile.userId)
         .then((u) => {
-          if (!cancelled) setGender((u.gender as Gender) ?? null)
+          if (cancelled) return
+          setName(u.nickname || u.name || "")
+          setEmail(u.email || "")
+          setGender((u.gender as Gender) ?? null)
+          setPhoto(u.profileImage ?? null)
         })
         .catch(() => {})
     return () => {
@@ -45,10 +83,20 @@ export default function ProfileEditPage() {
     }
   }, [profile.userId])
 
+  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow picking the same file again later
+    if (!file) return
+    try {
+      const resized = await fileToResizedDataUrl(file)
+      setPhoto(resized)
+    } catch {
+      setError("이미지를 불러오지 못했어요. 다른 사진을 시도해주세요.")
+    }
+  }
+
   async function save() {
     if (!profile.userId) {
-      // no real backend user (e.g. still using a purely local/demo profile) —
-      // fall back to the old local-only behavior
       setProfile((p) => ({ ...p, name, email, avatar }))
       setSaved(true)
       setTimeout(() => router.back(), 800)
@@ -62,8 +110,14 @@ export default function ProfileEditPage() {
         nickname: name.trim(),
         email: email.trim(),
         gender,
+        profileImage: photo,
       })
-      setProfile((p) => ({ ...p, name: updated.nickname || updated.name, email: updated.email, avatar }))
+      setProfile((p) => ({
+        ...p,
+        name: updated.nickname || updated.name,
+        email: updated.email,
+        avatar,
+      }))
       setSaved(true)
       setTimeout(() => router.back(), 800)
     } catch (e: any) {
@@ -78,28 +132,76 @@ export default function ProfileEditPage() {
         <PageHeader title="프로필 편집" subtitle="이미지와 정보를 변경할 수 있어요" />
 
         <div className="flex flex-col items-center mt-6">
-          <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary/60 to-brand/60 grid place-items-center text-5xl border-2 border-border">
-            {avatar}
+          <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-primary/60 to-brand/60 grid place-items-center text-5xl border-2 border-border overflow-hidden">
+            {photo ? (
+                <img src={photo} alt="프로필 사진" className="h-full w-full object-cover" />
+            ) : (
+                avatar
+            )}
           </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => cameraInputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4" /> 촬영하기
+            </Button>
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => galleryInputRef.current?.click()}
+            >
+              <ImageIcon className="h-4 w-4" /> 사진 선택
+            </Button>
+            {photo && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setPhoto(null)}>
+                  제거
+                </Button>
+            )}
+          </div>
+
+          {/* capture="environment" opens the camera directly on mobile;
+            desktop browsers just fall back to the normal file picker */}
+          <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFilePicked}
+          />
+          <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFilePicked}
+          />
         </div>
 
-        <div className="mt-6">
-          <Label className="text-xs text-muted-foreground">아바타 선택</Label>
-          <div className="mt-2 grid grid-cols-6 gap-2">
-            {AVATARS.map((a) => (
-                <button
-                    key={a}
-                    onClick={() => setAvatar(a)}
-                    className={cn(
-                        "h-12 w-12 grid place-items-center rounded-[10px] text-2xl border-2",
-                        avatar === a ? "border-primary bg-primary/10" : "border-border bg-surface/40"
-                    )}
-                >
-                  {a}
-                </button>
-            ))}
-          </div>
-        </div>
+        {!photo && (
+            <div className="mt-6">
+              <Label className="text-xs text-muted-foreground">아바타 선택</Label>
+              <div className="mt-2 grid grid-cols-6 gap-2">
+                {AVATARS.map((a) => (
+                    <button
+                        key={a}
+                        onClick={() => setAvatar(a)}
+                        className={cn(
+                            "h-12 w-12 grid place-items-center rounded-[10px] text-2xl border-2",
+                            avatar === a ? "border-primary bg-primary/10" : "border-border bg-surface/40"
+                        )}
+                    >
+                      {a}
+                    </button>
+                ))}
+              </div>
+            </div>
+        )}
 
         <div className="mt-6 space-y-4">
           <div className="space-y-1.5">

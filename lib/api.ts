@@ -76,6 +76,7 @@ export const api = {
         birthDate?: string
         phoneNumber?: string
         gender?: Gender | null
+        profileImage?: string | null
       }
   ): Promise<UserResponse> {
     return request(`/user/${id}`, {
@@ -149,6 +150,7 @@ export type UserResponse = {
   birthDate?: string
   phoneNumber?: string
   gender?: Gender | null
+  profileImage?: string | null
   createdAt?: string
 }
 
