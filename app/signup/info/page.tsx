@@ -26,7 +26,7 @@ export default function InfoPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
 
-  const [name, setName] = React.useState(profile.name || "")
+  const [name, setName] = React.useState("")
   const [username, setUsername] = React.useState("")
   const [usernameCheck, setUsernameCheck] = React.useState<CheckState>("idle")
   const [password, setPassword] = React.useState("")
