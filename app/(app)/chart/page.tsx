@@ -24,7 +24,7 @@ export default function ChartPage() {
 
   React.useEffect(() => {
     let cancelled = false
-    fetchKoreaTopSongs(50)
+    fetchKoreaTopSongs(100)
         .then((data) => {
           if (!cancelled) setChart(data)
         })
@@ -77,7 +77,7 @@ export default function ChartPage() {
           </div>
           <h1 className="text-2xl font-extrabold">인기차트</h1>
           <div className="mt-1 text-xs text-muted-foreground">
-            대한민국 Top {filtered.length || (chart.length || 50)}
+            대한민국 Top {filtered.length || (chart.length || 100)}
           </div>
         </header>
 
