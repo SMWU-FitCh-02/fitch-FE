@@ -52,6 +52,7 @@ export default function InfoPage() {
   }
 
   const passwordsMatch = password.length > 0 && password === passwordConfirm
+  const birthDateValid = /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
   const canNext =
       name.trim().length > 0 &&
       username.trim().length > 0 &&
@@ -59,7 +60,7 @@ export default function InfoPage() {
       password.length >= 8 &&
       passwordsMatch &&
       email.includes("@") &&
-      birthDate.length > 0 &&
+      birthDateValid &&
       phoneNumber.trim().length > 0
 
   async function next() {
@@ -212,11 +213,16 @@ export default function InfoPage() {
             <Label htmlFor="birthDate">생년월일</Label>
             <Input
                 id="birthDate"
-                type="date"
+                type="text"
+                inputMode="numeric"
+                placeholder="YYYY-MM-DD"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="text-sm [&::-webkit-date-and-time-value]:text-sm [&::-webkit-datetime-edit]:text-sm"
+                maxLength={10}
             />
+            {birthDate.length > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) && (
+                <p className="text-xs text-destructive">YYYY-MM-DD 형식으로 입력해주세요. (예: 2000-01-15)</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
