@@ -72,6 +72,7 @@ export default function ProfileEditPage() {
           setEmail(u.email || "")
           setGender((u.gender as Gender) ?? null)
           setPhoto(u.profileImage ?? null)
+          setProfile((p) => ({ ...p, profileImage: u.profileImage ?? null }))
         })
         .catch(() => {})
     return () => {
@@ -113,6 +114,7 @@ export default function ProfileEditPage() {
         name: updated.nickname || updated.name,
         email: updated.email,
         avatar,
+        profileImage: updated.profileImage ?? null,
       }))
       setSaved(true)
       setTimeout(() => router.back(), 800)

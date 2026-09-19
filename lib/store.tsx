@@ -26,13 +26,14 @@ export type UserProfile = {
   age?: string
   gender?: "male" | "female" | "other"
   avatar?: string // emoji or initial
+  profileImage?: string | null // real uploaded photo (base64 data URL)
   preferredSongIds: string[]
   preferredArtists: string[]
   preferredGenres: string[]
   range?: RangeRecord
   history: RangeRecord[]
-  library: string[] // legacy local-only saved song ids (kept for backward compat, no longer written to)
-  likedCharts: LikedChartSong[] // legacy local-only liked chart entries (kept for backward compat, no longer written to)
+  library: string[]
+  likedCharts: LikedChartSong[]
   loggedIn: boolean
 }
 
