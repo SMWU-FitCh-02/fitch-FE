@@ -77,9 +77,15 @@ export default function ChartPage() {
             const g = genderMap[entry.artist.normalize("NFC")]
             return g === filter || g === "MIXED"
         })
-        // re-rank 1, 2, 3... within the filtered (gender-only) list
         return matched.map((entry, i) => ({...entry, rank: i + 1}))
     }, [chart, filter, genderMap])
+
+    if (chart.length > 0 && Object.keys(genderMap).length > 0) {
+        const unmatched = chart
+            .filter((c) => genderMap[c.artist.normalize("NFC")] === undefined)
+            .map((c) => c.artist)
+        console.log("STILL UNMATCHED", filter, Array.from(new Set(unmatched)))
+    }
 
     const top3 = filtered.slice(0, 3)
     const rest = filtered.slice(3)
