@@ -1,3 +1,24 @@
+
+양세영의 MacBook Pro, 연결됨
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Home page · TSX
 "use client"
 
 import * as React from "react"
@@ -9,7 +30,7 @@ import { useStore } from "@/lib/store"
 import { SONGS } from "@/lib/songs"
 import { noteToKorean } from "@/lib/songs"
 import { SongCard } from "@/components/song-card"
-import { fetchKoreaTopSongs, type ChartEntry } from "@/lib/itunes"
+import { fetchKoreaTopSongsWithSource, chartSourceLabel, type ChartEntry, type ChartSource } from "@/lib/itunes"
 import { ChartSongRow } from "@/components/chart-song-row"
 import { api } from "@/lib/api"
 
@@ -19,6 +40,7 @@ export default function HomePage() {
     const hasRange = !!profile.range
 
     const [popular, setPopular] = React.useState<ChartEntry[]>([])
+    const [popularSource, setPopularSource] = React.useState<ChartSource>("melon")
     const [popularLoading, setPopularLoading] = React.useState(true)
 
     // keep the greeting/photo in sync with the backend (e.g. after a nickname change)
@@ -45,9 +67,11 @@ export default function HomePage() {
 
     React.useEffect(() => {
         let cancelled = false
-        fetchKoreaTopSongs(5)
-            .then((data) => {
-                if (!cancelled) setPopular(data)
+        fetchKoreaTopSongsWithSource(5)
+            .then(({ source, entries }) => {
+                if (cancelled) return
+                setPopularSource(source)
+                setPopular(entries)
             })
             .catch(() => {})
             .finally(() => {
@@ -102,7 +126,7 @@ export default function HomePage() {
                                 <span className="text-muted-foreground text-sm">—</span>
                                 <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
                             </div>
-                           {/* <div className="mt-1 text-[11px] text-muted-foreground">
+                            {/* <div className="mt-1 text-[11px] text-muted-foreground">
                                 편한음 | {noteToKorean(profile.range!.comfortableHigh)}
                             </div>*/}
                         </div>
@@ -145,7 +169,7 @@ export default function HomePage() {
             {/* Popular chart preview */}
             <Section
                 title="실시간 인기차트"
-                subtitle="Apple Music 기준"
+                subtitle={chartSourceLabel(popularSource)}
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
                 href="/chart"
             >
