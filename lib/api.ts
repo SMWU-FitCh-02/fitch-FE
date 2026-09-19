@@ -35,6 +35,8 @@ async function request(path: string, options: RequestInit = {}) {
   return body
 }
 
+export type Gender = "MALE" | "FEMALE" | "OTHER"
+
 export const api = {
   register(payload: {
     username: string
@@ -44,6 +46,7 @@ export const api = {
     email: string
     birthDate?: string
     phoneNumber?: string
+    gender?: Gender | null
   }) {
     return request("/auth/register", {
       method: "POST",
@@ -61,13 +64,20 @@ export const api = {
   checkUsername(username: string) {
     return request(`/auth/check-username?username=${encodeURIComponent(username)}`)
   },
-  getUser(id: number) {
+  getUser(id: number): Promise<UserResponse> {
     return request(`/user/${id}`)
   },
   updateUser(
-    id: number,
-    payload: { name?: string; nickname?: string; email?: string; birthDate?: string; phoneNumber?: string }
-  ) {
+      id: number,
+      payload: {
+        name?: string
+        nickname?: string
+        email?: string
+        birthDate?: string
+        phoneNumber?: string
+        gender?: Gender | null
+      }
+  ): Promise<UserResponse> {
     return request(`/user/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -128,6 +138,18 @@ export type SongResponse = {
   maxNote: number
   minNoteLabel: string
   maxNoteLabel: string
+}
+
+export type UserResponse = {
+  userId: number
+  username: string
+  email: string
+  name: string
+  nickname: string
+  birthDate?: string
+  phoneNumber?: string
+  gender?: Gender | null
+  createdAt?: string
 }
 
 export type RecommendResponse = {
