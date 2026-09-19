@@ -24,7 +24,7 @@ export default function MyPage() {
     const {profile, setProfile} = useStore()
     const hasRange = !!profile.range
 
-    // keep the displayed name/photo in sync with the backend (e.g. after a nickname change)
+    // keep the displayed name/photo/email in sync with the backend (e.g. after a nickname change)
     React.useEffect(() => {
         if (!profile.userId) return
         let cancelled = false
@@ -37,6 +37,7 @@ export default function MyPage() {
                     ...p,
                     name: displayName && displayName !== p.name ? displayName : p.name,
                     profileImage: u.profileImage ?? null,
+                    email: u.email ?? p.email,
                 }))
             })
             .catch(() => {
