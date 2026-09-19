@@ -127,6 +127,7 @@ export default function InfoPage() {
                 placeholder="홍길동"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
             />
           </div>
 
