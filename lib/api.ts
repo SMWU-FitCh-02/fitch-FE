@@ -36,6 +36,7 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export type Gender = "MALE" | "FEMALE" | "OTHER"
+export type ArtistGender = "MALE" | "FEMALE" | "MIXED"
 
 export const api = {
   register(payload: {
@@ -126,6 +127,12 @@ export const api = {
   },
   getChartLikes() {
     return request("/bookmarks/charts")
+  },
+  getArtistGenders(artists: string[]): Promise<Record<string, ArtistGender>> {
+    if (artists.length === 0) return Promise.resolve({})
+    const params = new URLSearchParams()
+    artists.forEach((a) => params.append("artists", a))
+    return request(`/chart/artist-genders?${params.toString()}`)
   },
 }
 
