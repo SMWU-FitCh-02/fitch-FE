@@ -108,10 +108,10 @@ export default function RecommendationsPage() {
             전체
           </button>
           <button onClick={() => setTierFilter("easy")} className={chipClass(tierFilter === "easy")}>
-            🎵 쉬움
+            쉬움
           </button>
           <button onClick={() => setTierFilter("hard")} className={chipClass(tierFilter === "hard")}>
-            🔥 고난도
+            고난이도
           </button>
           {genres.map((g) => (
               <button
