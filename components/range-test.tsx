@@ -325,9 +325,6 @@ export function RangeTest({
               <div className="text-2xl font-extrabold text-brand">{result?.highestNote}</div>
             </div>
           </div>
-          <div className="mt-4 text-xs text-muted-foreground">
-            음색 · {labelForTone(result?.voiceTone)}
-          </div>
         </div>
         <div className="rounded-[12px] bg-surface/70 border border-border/60 p-4 w-full text-left">
           <div className="flex gap-2">
