@@ -59,13 +59,13 @@ export default function OnboardingPage() {
         </div>
 
         <div className="mt-6 space-y-3">
-          {isLast ? (
-              <Button variant="brand" size="lg" className="w-full" asChild>
-                <Link href="/login">
-                  시작하기 <ChevronRight className="h-5 w-5" />
-                </Link>
-              </Button>
-          ) : (
+            {isLast ? (
+                <Button variant="brand" size="lg" className="w-full" asChild>
+                    <Link href="/signup/terms">
+                        시작하기 <ChevronRight className="h-5 w-5" />
+                    </Link>
+                </Button>
+            ) : (
               <Button variant="brand" size="lg" className="w-full" onClick={() => setStep((s) => s + 1)}>
                 다음 <ChevronRight className="h-5 w-5" />
               </Button>

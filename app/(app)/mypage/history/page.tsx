@@ -147,7 +147,6 @@ export default function HistoryPage() {
                   minute: "2-digit",
                 })}
               </div>
-              <Badge variant="muted">{toneLabel(h.voiceTone)}</Badge>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-center">
               <div>
@@ -172,8 +171,4 @@ export default function HistoryPage() {
       </Button>
     </main>
   )
-}
-
-function toneLabel(t: "bright" | "warm" | "husky" | "soft") {
-  return { bright: "☀️ 밝음", warm: "☕ 따뜻함", husky: "🌙 허스키", soft: "☁️ 부드러움" }[t]
 }

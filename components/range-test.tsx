@@ -364,18 +364,3 @@ export function RangeTest({
       </div>
   )
 }
-
-function labelForTone(t?: "bright" | "warm" | "husky" | "soft") {
-  switch (t) {
-    case "bright":
-      return "밝고 청량한 음색 ☀️"
-    case "warm":
-      return "따뜻하고 부드러운 음색 ☕"
-    case "husky":
-      return "허스키하고 매력적인 음색 🌙"
-    case "soft":
-      return "포근하고 잔잔한 음색 ☁️"
-    default:
-      return "—"
-  }
-}
