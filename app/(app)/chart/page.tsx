@@ -46,9 +46,9 @@ export default function ChartPage() {
     React.useEffect(() => {
         if (chart.length === 0) return
         let cancelled = false
-        // NFC로 정규화해서 보냄 — 한글/악센트 문자는 완성형(NFC)/분해형(NFD)
-        // 두 가지로 표현될 수 있는데, 화면엔 똑같이 보여도 문자열 비교는 다르게
-        // 취급되기 때문에 여기서 통일해준다.
+        // NFC로 정규화 — 한글/악센트 문자가 완성형(NFC)/분해형(NFD) 두 가지로
+        // 표현될 수 있는 경우를 대비한 안전장치 (실제 원인은 멜론 쪽 &nbsp;였지만
+        // 유니코드 조합형 문제도 같이 막아두는 게 안전함)
         const uniqueArtists = Array.from(
             new Set(chart.map((c) => c.artist.normalize("NFC")))
         )
@@ -56,8 +56,6 @@ export default function ChartPage() {
             .getArtistGenders(uniqueArtists)
             .then((map) => {
                 if (cancelled) return
-                // 백엔드/DB에서 온 키가 NFD로 저장돼 있을 수 있어서, 여기서도
-                // NFC로 정규화해서 저장해야 아래 필터링에서 정확히 매칭된다.
                 const normalized: Record<string, ArtistGender> = {}
                 for (const [k, v] of Object.entries(map)) {
                     normalized[k.normalize("NFC")] = v
@@ -77,18 +75,14 @@ export default function ChartPage() {
             const g = genderMap[entry.artist.normalize("NFC")]
             return g === filter || g === "MIXED"
         })
+        // re-rank 1, 2, 3... within the filtered (gender-only) list
         return matched.map((entry, i) => ({...entry, rank: i + 1}))
     }, [chart, filter, genderMap])
 
-    if (chart.length > 0 && Object.keys(genderMap).length > 0) {
-        const unmatched = chart
-            .filter((c) => genderMap[c.artist.normalize("NFC")] === undefined)
-            .map((c) => c.artist)
-        console.log("STILL UNMATCHED", filter, Array.from(new Set(unmatched)))
-    }
-
     const top3 = filtered.slice(0, 3)
     const rest = filtered.slice(3)
+
+    const filterLabel = FILTERS.find((f) => f.value === filter)?.label
 
     return (
         <main className="px-4 pt-4 pb-6">
@@ -99,7 +93,7 @@ export default function ChartPage() {
                 </div>
                 <h1 className="text-2xl font-extrabold">인기차트</h1>
                 <div className="mt-1 text-xs text-muted-foreground">
-                    대한민국 Top {filtered.length || (chart.length || 100)}
+                    {filter === "ALL" ? "대한민국 TOP 100" : `TOP 100 중 ${filterLabel}`}
                 </div>
             </header>
 
