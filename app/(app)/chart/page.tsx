@@ -57,10 +57,12 @@ export default function ChartPage() {
 
   const filtered = React.useMemo(() => {
     if (filter === "ALL") return chart
-    return chart.filter((entry) => {
+    const matched = chart.filter((entry) => {
       const g = genderMap[entry.artist]
       return g === filter || g === "MIXED"
     })
+    // re-rank 1, 2, 3... within the filtered (gender-only) list
+    return matched.map((entry, i) => ({ ...entry, rank: i + 1 }))
   }, [chart, filter, genderMap])
 
   const top3 = filtered.slice(0, 3)
