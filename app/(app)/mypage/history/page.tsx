@@ -150,15 +150,15 @@ export default function HistoryPage() {
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <div className="text-[10px] text-muted-foreground">최저</div>
+                    <div className="text-[10px] text-muted-foreground">최저음</div>
                     <div className="text-sm font-extrabold">{noteToKorean(h.lowestNote)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-muted-foreground">편한 고음</div>
+                    <div className="text-[10px] text-muted-foreground">편한음</div>
                     <div className="text-sm font-extrabold">{noteToKorean(h.comfortableHigh)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-muted-foreground">최고</div>
+                    <div className="text-[10px] text-muted-foreground">최고음</div>
                     <div className="text-sm font-extrabold text-brand">{noteToKorean(h.highestNote)}</div>
                   </div>
                 </div>

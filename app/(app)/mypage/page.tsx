@@ -111,9 +111,12 @@ export default function MyPage() {
                         <div className="text-base font-extrabold truncate">{profile.name || "FitCh 유저"}</div>
                         <div className="text-xs text-muted-foreground truncate">{profile.email}</div>
                         {hasRange && (
-                            <div
-                                className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/15 text-primary font-bold">
-                                내 음역대 {noteToKorean(profile.range!.lowestNote)} – {noteToKorean(profile.range!.highestNote)}                            </div>
+                            <div className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-primary/15">
+                                <span className="text-muted-foreground font-medium">내 음역대</span>
+                                <span className="text-primary font-extrabold">
+      {noteToKorean(profile.range!.lowestNote)} – {noteToKorean(profile.range!.highestNote)}
+    </span>
+                            </div>
                         )}
                     </div>
                 </div>

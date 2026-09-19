@@ -11,8 +11,8 @@ type GenderFilter = "ALL" | "MALE" | "FEMALE"
 
 const FILTERS: { value: GenderFilter; label: string }[] = [
   { value: "ALL", label: "전체" },
-  { value: "MALE", label: "남성" },
-  { value: "FEMALE", label: "여성" },
+  { value: "MALE", label: "남성곡" },
+  { value: "FEMALE", label: "여성곡" },
 ]
 
 export default function ChartPage() {

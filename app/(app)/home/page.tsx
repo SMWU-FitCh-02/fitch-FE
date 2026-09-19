@@ -102,9 +102,9 @@ export default function HomePage() {
                                 <span className="text-muted-foreground text-sm">—</span>
                                 <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
                             </div>
-                            <div className="mt-1 text-[11px] text-muted-foreground">
-                                편한 고음 {noteToKorean(profile.range!.comfortableHigh)} · {fmtTone(profile.range!.voiceTone)}
-                            </div>
+                           {/* <div className="mt-1 text-[11px] text-muted-foreground">
+                                편한음 | {noteToKorean(profile.range!.comfortableHigh)}
+                            </div>*/}
                         </div>
                         <WaveBars />
                     </div>
@@ -145,7 +145,7 @@ export default function HomePage() {
             {/* Popular chart preview */}
             <Section
                 title="실시간 인기차트"
-                subtitle="Apple Music 기준 · 대한민국 Top 5"
+                subtitle="Apple Music 기준"
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
                 href="/chart"
             >
@@ -162,11 +162,11 @@ export default function HomePage() {
 
             <Link
                 href="/mypage/range-test"
-                className="block rounded-[14px] border border-dashed border-border/80 p-5 text-center"
+                className="block rounded-[14px] border border-border/80 p-5 text-center"
             >
                 <div className="text-sm font-semibold">다시 측정하기</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                    목소리가 달라졌다면 한 번 더 측정해보세요
+                    음역대가 달라졌다면 한 번 더 측정해보세요
                 </div>
             </Link>
         </main>
@@ -218,6 +218,3 @@ function greetByHour() {
     return "오늘 밤은 노래 한 곡 어때요 🎶"
 }
 
-function fmtTone(t: "bright" | "warm" | "husky" | "soft") {
-    return { bright: "밝음", warm: "따뜻함", husky: "허스키", soft: "부드러움" }[t]
-}
