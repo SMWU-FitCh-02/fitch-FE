@@ -54,7 +54,7 @@ export default function ProfileEditPage() {
   const [email, setEmail] = React.useState(profile.email)
   const [avatar, setAvatar] = React.useState(profile.avatar || "🎤")
   const [gender, setGender] = React.useState<Gender | null>(null)
-  const [photo, setPhoto] = React.useState<string | null>(null)
+  const [photo, setPhoto] = React.useState<string | null>(profile.profileImage ?? null)
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -78,6 +78,7 @@ export default function ProfileEditPage() {
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.userId])
 
   async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -94,7 +95,7 @@ export default function ProfileEditPage() {
 
   async function save() {
     if (!profile.userId) {
-      setProfile((p) => ({ ...p, name, email, avatar }))
+      setProfile((p) => ({ ...p, name, email, avatar, profileImage: photo }))
       setSaved(true)
       setTimeout(() => router.back(), 800)
       return

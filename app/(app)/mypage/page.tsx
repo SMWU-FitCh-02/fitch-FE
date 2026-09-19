@@ -23,20 +23,22 @@ export default function MyPage() {
   const { profile, setProfile } = useStore()
   const hasRange = !!profile.range
 
-  // keep the displayed name in sync with the backend (e.g. after a nickname change)
+  // keep the displayed name/photo in sync with the backend (e.g. after a nickname change)
   React.useEffect(() => {
     if (!profile.userId) return
     let cancelled = false
     api
-      .getUser(profile.userId)
-      .then((u) => {
-        if (cancelled) return
-        const displayName = u.nickname || u.name
-        if (displayName && displayName !== profile.name) {
-          setProfile((p) => ({ ...p, name: displayName }))
-        }
-      })
-      .catch(() => {})
+        .getUser(profile.userId)
+        .then((u) => {
+          if (cancelled) return
+          const displayName = u.nickname || u.name
+          setProfile((p) => ({
+            ...p,
+            name: displayName && displayName !== p.name ? displayName : p.name,
+            profileImage: u.profileImage ?? null,
+          }))
+        })
+        .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -81,80 +83,84 @@ export default function MyPage() {
   ] as const
 
   return (
-    <main className="px-4 pt-4 pb-6">
-      {/* Profile */}
-      <section className="rounded-[14px] bg-card border border-border/60 p-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/mypage/profile"
-            className="relative h-16 w-16 rounded-full bg-gradient-to-br from-primary/60 to-brand/60 grid place-items-center text-3xl border-2 border-border"
-            aria-label="프로필 사진 변경"
-          >
-            {profile.avatar || "🎤"}
-            <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary grid place-items-center">
+      <main className="px-4 pt-4 pb-6">
+        {/* Profile */}
+        <section className="rounded-[14px] bg-card border border-border/60 p-4">
+          <div className="flex items-center gap-3">
+            <Link
+                href="/mypage/profile"
+                className="relative h-16 w-16 rounded-full bg-gradient-to-br from-primary/60 to-brand/60 grid place-items-center text-3xl border-2 border-border overflow-hidden"
+                aria-label="프로필 사진 변경"
+            >
+              {profile.profileImage ? (
+                  <img src={profile.profileImage} alt="프로필 사진" className="h-full w-full object-cover" />
+              ) : (
+                  profile.avatar || "🎤"
+              )}
+              <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary grid place-items-center">
               <Pencil className="h-3 w-3 text-primary-foreground" />
             </span>
-          </Link>
-          <div className="flex-1 min-w-0">
-            <div className="text-base font-extrabold truncate">{profile.name || "FitCh 유저"}</div>
-            <div className="text-xs text-muted-foreground truncate">{profile.email}</div>
-            {hasRange && (
-              <div className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/15 text-primary font-bold">
-                내 음역대 {profile.range!.lowestNote} – {profile.range!.highestNote}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <h2 className="mt-6 mb-2 px-1 text-sm font-bold text-muted-foreground uppercase tracking-wide">
-        음역대 기능
-      </h2>
-      <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
-        {items.map((it) => {
-          const Icon = it.icon
-          const lockedHint = it.requiresRange && !hasRange
-          return (
-            <Link
-              key={it.href}
-              href={lockedHint ? "/mypage/range-test" : it.href}
-              className="flex items-center gap-3 p-4 hover:bg-surface/50 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-[10px] bg-primary/15 text-primary grid place-items-center">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">{it.title}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {lockedHint ? "먼저 음역대 측정이 필요해요" : it.desc}
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
-          )
-        })}
-      </div>
-
-      <h2 className="mt-6 mb-2 px-1 text-sm font-bold text-muted-foreground uppercase tracking-wide">
-        설정
-      </h2>
-      <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
-        <Link href="/mypage/privacy" className="flex items-center gap-3 p-4 hover:bg-surface/50">
-          <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
-            <ShieldCheck className="h-5 w-5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-base font-extrabold truncate">{profile.name || "FitCh 유저"}</div>
+              <div className="text-xs text-muted-foreground truncate">{profile.email}</div>
+              {hasRange && (
+                  <div className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/15 text-primary font-bold">
+                    내 음역대 {profile.range!.lowestNote} – {profile.range!.highestNote}
+                  </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 text-sm font-semibold">개인정보 / 보안</div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-      </div>
+        </section>
 
-      <Separator className="my-6" />
-      <Button variant="outline" size="lg" className="w-full" onClick={logout}>
-        <LogOut className="h-4 w-4" /> 로그아웃
-      </Button>
-      <div className="mt-4 text-center text-[11px] text-muted-foreground">
-        FitCh · v0.2 prototype
-      </div>
-    </main>
+        <h2 className="mt-6 mb-2 px-1 text-sm font-bold text-muted-foreground uppercase tracking-wide">
+          음역대 기능
+        </h2>
+        <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
+          {items.map((it) => {
+            const Icon = it.icon
+            const lockedHint = it.requiresRange && !hasRange
+            return (
+                <Link
+                    key={it.href}
+                    href={lockedHint ? "/mypage/range-test" : it.href}
+                    className="flex items-center gap-3 p-4 hover:bg-surface/50 transition-colors"
+                >
+                  <div className="h-10 w-10 rounded-[10px] bg-primary/15 text-primary grid place-items-center">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold">{it.title}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {lockedHint ? "먼저 음역대 측정이 필요해요" : it.desc}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+            )
+          })}
+        </div>
+
+        <h2 className="mt-6 mb-2 px-1 text-sm font-bold text-muted-foreground uppercase tracking-wide">
+          설정
+        </h2>
+        <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
+          <Link href="/mypage/privacy" className="flex items-center gap-3 p-4 hover:bg-surface/50">
+            <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-sm font-semibold">개인정보 / 보안</div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </div>
+
+        <Separator className="my-6" />
+        <Button variant="outline" size="lg" className="w-full" onClick={logout}>
+          <LogOut className="h-4 w-4" /> 로그아웃
+        </Button>
+        <div className="mt-4 text-center text-[11px] text-muted-foreground">
+          FitCh · v0.2 prototype
+        </div>
+      </main>
   )
 }
