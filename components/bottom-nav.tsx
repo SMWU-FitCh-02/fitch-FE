@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Music2, BookmarkCheck, TrendingUp, User } from "lucide-react"
@@ -13,14 +14,52 @@ const items = [
     { href: "/mypage", label: "마이", icon: User },
 ]
 
+// 인스타그램 하단바처럼: 아래로 스크롤하면 바가 살짝 작아지고,
+// 위로 스크롤할 때만 원래 크기로 돌아온다. 가만히 있을 땐 작아진 상태 그대로 유지.
+function useShrinkOnScroll() {
+    const [shrunk, setShrunk] = React.useState(false)
+    const lastY = React.useRef(0)
+
+    React.useEffect(() => {
+        lastY.current = window.scrollY
+
+        function handleScroll() {
+            const y = window.scrollY
+            const delta = y - lastY.current
+
+            if (y < 24) {
+                setShrunk(false) // 맨 위 근처에서는 항상 원래 크기
+            } else if (delta > 4) {
+                setShrunk(true) // 아래로 스크롤 중
+            } else if (delta < -4) {
+                setShrunk(false) // 위로 스크롤 중
+            }
+
+            lastY.current = y
+        }
+
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
+
+    return shrunk
+}
+
 export function BottomNav() {
     const pathname = usePathname() ?? ""
     const home = items.find((it) => it.center)!
     const homeActive = pathname === home.href || pathname.startsWith(home.href + "/")
     const HomeIcon = home.icon
+    const shrunk = useShrinkOnScroll()
 
     return (
-        <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2">            <div className="relative mx-auto max-w-md rounded-[26px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)]">
+        <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2">
+            <div
+                className={cn(
+                    "relative mx-auto max-w-md rounded-[26px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-out origin-bottom",
+                    shrunk ? "scale-85" : "scale-100"
+                )}
+            >
                 <ul className="grid grid-cols-5 items-end">
                     {items.map((it) => {
                         const active = pathname === it.href || pathname.startsWith(it.href + "/")
