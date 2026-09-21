@@ -4,7 +4,6 @@ import { Heart } from "lucide-react"
 import type { ChartEntry } from "@/lib/itunes"
 import { useStore } from "@/lib/store"
 import { noteToMidi } from "@/lib/songs"
-import { Badge } from "@/components/ui/badge"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -25,13 +24,16 @@ function useDifficultyStars(entry: ChartEntryWithRange): 1 | 2 | 3 | null {
     return 3
 }
 
-function DifficultyBadge({ stars }: { stars: 1 | 2 | 3 }) {
-    const variant = stars === 1 ? "success" : stars === 2 ? "warning" : "destructive"
+// 앨범 커버 위에 올라가는 작은 별 뱃지 (어느 배경에서도 잘 보이도록 어두운 배경 + 색 텍스트)
+function DifficultyBadge({ stars, className = "" }: { stars: 1 | 2 | 3; className?: string }) {
+    const color = stars === 1 ? "text-emerald-400" : stars === 2 ? "text-amber-400" : "text-rose-400"
     return (
-        <Badge variant={variant} className="shrink-0 px-1.5 py-0 text-[10px] leading-4">
+        <div
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur px-1.5 py-0.5 text-[10px] font-bold leading-none ${color} ${className}`}
+        >
             {"★".repeat(stars)}
-            {"☆".repeat(3 - stars)}
-        </Badge>
+            <span className="text-white/25">{"☆".repeat(3 - stars)}</span>
+        </div>
     )
 }
 
@@ -55,29 +57,27 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
                 ) : (
                     <div className="h-full w-full bg-muted" />
                 )}
+                {stars && <DifficultyBadge stars={stars} className="absolute bottom-1 left-1" />}
             </div>
             <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-foreground">{entry.title}</div>
                 <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
             </div>
-            <div className="flex flex-col items-center gap-1 shrink-0">
-                {stars && <DifficultyBadge stars={stars} />}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        toggleChartLikeRemote({
-                            externalId: entry.id,
-                            title: entry.title,
-                            artist: entry.artist,
-                            artworkUrl: entry.artworkUrl || null,
-                        })
-                    }}
-                    className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
-                    aria-label={isSaved ? "좋아요 취소" : "좋아요"}
-                >
-                    <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
-                </button>
-            </div>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation()
+                    toggleChartLikeRemote({
+                        externalId: entry.id,
+                        title: entry.title,
+                        artist: entry.artist,
+                        artworkUrl: entry.artworkUrl || null,
+                    })
+                }}
+                className="shrink-0 h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
+                aria-label={isSaved ? "좋아요 취소" : "좋아요"}
+            >
+                <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+            </button>
         </div>
     )
 }
@@ -96,11 +96,9 @@ export function ChartSongTile({ entry }: { entry: ChartEntryWithRange }) {
                 ) : (
                     <div className="h-full w-full bg-muted" />
                 )}
+                {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 left-1.5" />}
             </div>
-            <div className="mt-2 flex items-center gap-1.5">
-                <div className="truncate text-sm font-semibold">{entry.title}</div>
-                {stars && <DifficultyBadge stars={stars} />}
-            </div>
+            <div className="mt-2 truncate text-sm font-semibold">{entry.title}</div>
             <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
         </div>
     )
@@ -116,30 +114,28 @@ export function ChartPodiumItem({ entry }: { entry: ChartEntryWithRange }) {
             <div className="absolute top-2 left-2 z-10 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-brand text-primary-foreground grid place-items-center text-xs font-extrabold">
                 {entry.rank}
             </div>
-            <div className="absolute top-2 right-2 z-10 flex flex-col items-center gap-1">
-                {stars && <DifficultyBadge stars={stars} />}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        toggleChartLikeRemote({
-                            externalId: entry.id,
-                            title: entry.title,
-                            artist: entry.artist,
-                            artworkUrl: entry.artworkUrl || null,
-                        })
-                    }}
-                    className="h-7 w-7 rounded-full bg-black/40 backdrop-blur grid place-items-center"
-                    aria-label={isSaved ? "좋아요 취소" : "좋아요"}
-                >
-                    <Heart className={`h-3.5 w-3.5 ${isSaved ? "fill-primary text-primary" : "text-white"}`} />
-                </button>
-            </div>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation()
+                    toggleChartLikeRemote({
+                        externalId: entry.id,
+                        title: entry.title,
+                        artist: entry.artist,
+                        artworkUrl: entry.artworkUrl || null,
+                    })
+                }}
+                className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-black/40 backdrop-blur grid place-items-center"
+                aria-label={isSaved ? "좋아요 취소" : "좋아요"}
+            >
+                <Heart className={`h-3.5 w-3.5 ${isSaved ? "fill-primary text-primary" : "text-white"}`} />
+            </button>
             <div className="aspect-square relative rounded-[10px] overflow-hidden">
                 {entry.artworkUrl ? (
                     <img src={entry.artworkUrl} alt={entry.title} className="object-cover h-full w-full" />
                 ) : (
                     <div className="h-full w-full bg-muted" />
                 )}
+                {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 left-1.5" />}
             </div>
             <div className="mt-2 text-xs font-bold truncate">{entry.title}</div>
             <div className="text-[10px] text-muted-foreground truncate">{entry.artist}</div>
