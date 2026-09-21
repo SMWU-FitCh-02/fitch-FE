@@ -19,7 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="flex-1 pb-2">{children}</div>
+      <div className="flex-1 pb-24">{children}</div>
       <BottomNav />
     </div>
   )
