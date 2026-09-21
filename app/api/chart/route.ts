@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     try {
       const res = await fetch(
           `https://rss.marketingtools.apple.com/api/v2/kr/music/most-played/${limit}/songs.json`,
-          { next: { revalidate: 300 } }
+          { next: { revalidate: 3600 } } // 1시간 캐시
       )
       if (!res.ok) {
         return NextResponse.json({ error: "차트를 불러오지 못했어요." }, { status: 502 })
@@ -35,9 +35,9 @@ export async function GET(req: NextRequest) {
 // identical to a normal space, but a different character. Our DB (and
 // Apple's feed) use plain spaces, so anything scraped from Melon has to be
 // normalized here or every downstream string comparison silently fails to
-// match (e.g. "Lady Gaga" scraped as "Lady Gaga" !== "Lady Gaga").
+// match (e.g. "Lady Gaga" scraped as "Lady Gaga" !== "Lady Gaga").
 function cleanText(s: string): string {
-  return s.replace(/ /g, " ").replace(/\s+/g, " ").trim()
+  return s.replace(/ /g, " ").replace(/\s+/g, " ").trim()
 }
 
 async function fetchMelonChart(limit: number) {
@@ -47,7 +47,7 @@ async function fetchMelonChart(limit: number) {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       Referer: "https://www.melon.com/",
     },
-    next: { revalidate: 300 }, // 5분 캐시
+    next: { revalidate: 3600 }, // 멜론차트는 매시 정각 갱신이라 1시간 캐시로 충분
   })
   if (!res.ok) throw new Error(`멜론 응답 실패: ${res.status}`)
 

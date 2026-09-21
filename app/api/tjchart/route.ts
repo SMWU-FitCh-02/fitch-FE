@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
+import { unstable_cache } from "next/cache"
+
+// TJ차트는 실제로는 주간 단위로만 순위가 바뀌므로, 스크래핑 결과를 6시간 동안
+// 캐싱해서 재사용한다 (매 요청마다 TJ 사이트에 직접 접속하면 3초 이상 걸림).
+const CACHE_TTL_SECONDS = 60 * 60 * 6 // 6시간
 
 // TJ미디어 TOP100 차트. tjmedia.com/chart/top100 페이지 자체는 데이터를
 // 자바스크립트로 그려서(정적 HTML엔 목록이 없음) 직접 스크래핑이 안 되고,
@@ -54,72 +59,85 @@ function ymd(date: Date): string {
     return date.toISOString().slice(0, 10)
 }
 
+// 실제 스크래핑 로직 (캐시 미스일 때만 호출됨). limit은 여기서 적용하지 않고
+// 전체 목록을 캐싱해서, limit이 다른 요청끼리도 같은 캐시를 공유하게 한다.
+async function fetchTjChart(strType: string) {
+    const { cookieHeader, csrfToken } = await tjFetchSession()
+
+    const end = new Date()
+    const start = new Date(end.getTime() - 29 * 86400 * 1000)
+
+    const body = new URLSearchParams({
+        chartType: "TOP",
+        searchStartDate: ymd(start),
+        searchEndDate: ymd(end),
+        strType,
+    })
+
+    const apiRes = await fetch(TJ_CHART_API, {
+        method: "POST",
+        headers: {
+            "User-Agent": UA,
+            Accept: "*/*",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            Origin: TJ_CHART_BASE,
+            Referer: TJ_CHART_PAGE,
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRF-TOKEN": csrfToken,
+            Cookie: cookieHeader,
+        },
+        body: body.toString(),
+        cache: "no-store",
+    })
+
+    if (!apiRes.ok) {
+        throw new Error("TJ 차트를 불러오지 못했어요.")
+    }
+
+    const payload = await apiRes.json()
+    const rawItems: any[] = payload?.resultData?.items ?? []
+
+    const items = rawItems
+        .map((row) => {
+            const no = String(row.pro ?? "").trim()
+            const title = String(row.indexTitle ?? "").trim()
+            if (!no || !title) return null
+            return {
+                rank: Number(row.rank) || 0,
+                no,
+                title,
+                singer: String(row.indexSong ?? "").trim(),
+                thumb: row.imgthumb_path
+                    ? String(row.imgthumb_path).startsWith("http")
+                        ? row.imgthumb_path
+                        : `${TJ_CHART_BASE}${row.imgthumb_path}`
+                    : "",
+            }
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+        .sort((a, b) => (a.rank || 999999) - (b.rank || 999999))
+
+    if (items.length === 0) {
+        throw new Error("TJ 차트 파싱 결과가 비어있어요.")
+    }
+
+    return items
+}
+
+// strType(장르)별로 별도 캐시 항목을 가짐. 인자(strType)는 자동으로 캐시 키에 포함됨.
+const getCachedTjChart = unstable_cache(
+    (strType: string) => fetchTjChart(strType),
+    ["tj-chart-top100"],
+    { revalidate: CACHE_TTL_SECONDS }
+)
+
 export async function GET(req: NextRequest) {
     const limit = parseInt(req.nextUrl.searchParams.get("limit") || "100", 10)
     const strType = req.nextUrl.searchParams.get("strType") || "" // "" = 종합, 그 외엔 장르 코드
 
     try {
-        const { cookieHeader, csrfToken } = await tjFetchSession()
-
-        const end = new Date()
-        const start = new Date(end.getTime() - 29 * 86400 * 1000)
-
-        const body = new URLSearchParams({
-            chartType: "TOP",
-            searchStartDate: ymd(start),
-            searchEndDate: ymd(end),
-            strType,
-        })
-
-        const apiRes = await fetch(TJ_CHART_API, {
-            method: "POST",
-            headers: {
-                "User-Agent": UA,
-                Accept: "*/*",
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                Origin: TJ_CHART_BASE,
-                Referer: TJ_CHART_PAGE,
-                "X-Requested-With": "XMLHttpRequest",
-                "X-CSRF-TOKEN": csrfToken,
-                Cookie: cookieHeader,
-            },
-            body: body.toString(),
-            cache: "no-store",
-        })
-
-        if (!apiRes.ok) {
-            return NextResponse.json({ error: "TJ 차트를 불러오지 못했어요." }, { status: 502 })
-        }
-
-        const payload = await apiRes.json()
-        const rawItems: any[] = payload?.resultData?.items ?? []
-
-        const items = rawItems
-            .map((row) => {
-                const no = String(row.pro ?? "").trim()
-                const title = String(row.indexTitle ?? "").trim()
-                if (!no || !title) return null
-                return {
-                    rank: Number(row.rank) || 0,
-                    no,
-                    title,
-                    singer: String(row.indexSong ?? "").trim(),
-                    thumb: row.imgthumb_path
-                        ? String(row.imgthumb_path).startsWith("http")
-                            ? row.imgthumb_path
-                            : `${TJ_CHART_BASE}${row.imgthumb_path}`
-                        : "",
-                }
-            })
-            .filter((x): x is NonNullable<typeof x> => x !== null)
-            .sort((a, b) => (a.rank || 999999) - (b.rank || 999999))
-            .slice(0, limit)
-
-        if (items.length === 0) {
-            return NextResponse.json({ error: "TJ 차트 파싱 결과가 비어있어요." }, { status: 502 })
-        }
-
-        return NextResponse.json({ source: "tjmedia", items })
+        const items = await getCachedTjChart(strType)
+        return NextResponse.json({ source: "tjmedia", items: items.slice(0, limit) })
     } catch {
         return NextResponse.json({ error: "TJ 차트를 불러오지 못했어요." }, { status: 502 })
     }
