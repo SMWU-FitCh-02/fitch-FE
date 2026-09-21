@@ -53,10 +53,9 @@ export function BottomNav() {
     const shrunk = useShrinkOnScroll()
 
     return (
-        <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2">
-            <div
+        <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2">            <div
                 className={cn(
-                    "relative mx-auto max-w-md rounded-[26px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-out origin-bottom",
+                    "relative mx-auto max-w-md rounded-[35px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-out origin-bottom",
                     shrunk ? "scale-85" : "scale-100"
                 )}
             >
