@@ -9,7 +9,8 @@ import { useStore } from "@/lib/store"
 import { SONGS } from "@/lib/songs"
 import { noteToKorean } from "@/lib/songs"
 import { SongCard } from "@/components/song-card"
-import { fetchKoreaTopSongsWithSource, chartSourceLabel, type ChartEntry, type ChartSource } from "@/lib/itunes"
+import { type ChartEntry } from "@/lib/itunes"
+import { fetchTjTop100 } from "@/lib/tjchart"
 import { ChartSongRow } from "@/components/chart-song-row"
 import { api } from "@/lib/api"
 
@@ -19,7 +20,6 @@ export default function HomePage() {
     const hasRange = !!profile.range
 
     const [popular, setPopular] = React.useState<ChartEntry[]>([])
-    const [popularSource, setPopularSource] = React.useState<ChartSource>("melon")
     const [popularLoading, setPopularLoading] = React.useState(true)
 
     // keep the greeting/photo in sync with the backend (e.g. after a nickname change)
@@ -44,13 +44,12 @@ export default function HomePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile.userId])
 
+    // TJ미디어 노래방 인기차트 (TOP100 중 상위 5곡 미리보기)
     React.useEffect(() => {
         let cancelled = false
-        fetchKoreaTopSongsWithSource(5)
-            .then(({ source, entries }) => {
-                if (cancelled) return
-                setPopularSource(source)
-                setPopular(entries)
+        fetchTjTop100(5)
+            .then((data) => {
+                if (!cancelled) setPopular(data)
             })
             .catch(() => {})
             .finally(() => {
@@ -145,10 +144,10 @@ export default function HomePage() {
                 </Section>
             )}
 
-            {/* Popular chart preview */}
+            {/* Popular chart preview — TJ미디어 노래방 인기차트 기준 */}
             <Section
                 title="실시간 인기차트"
-                subtitle={chartSourceLabel(popularSource)}
+                subtitle="TJ미디어 노래방 인기차트 기준"
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
                 href="/chart"
             >
