@@ -7,6 +7,8 @@ export type ChartEntry = {
   genre: string
   releaseDate: string
   itunesUrl: string
+  lowestNote?: string
+  highestNote?: string
 }
 
 export type ChartSource = "melon" | "apple"
@@ -52,3 +54,4 @@ export async function fetchKoreaTopSongs(limit = 25): Promise<ChartEntry[]> {
 export function chartSourceLabel(source: ChartSource): string {
   return source === "melon" ? "멜론 차트 기준" : "Apple Music 기준"
 }
+

@@ -134,7 +134,18 @@ export const api = {
     artists.forEach((a) => params.append("artists", a))
     return request(`/chart/artist-genders?${params.toString()}`)
   },
+
+  getVocalRanges(songs: { title: string; artist: string }[]): Promise<Record<string, CrawledVocalRange>> {
+    if (songs.length === 0) return Promise.resolve({})
+    return request(`/chart/vocal-ranges`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(songs),
+    })
+  },
 }
+
+
 
 export type SongResponse = {
   songId: number
@@ -182,6 +193,19 @@ export function decodeJwtSubject(token: string): string | null {
   } catch {
     return null
   }
+}
+
+// 백엔드 CrawledSongVocalRange.buildKey()와 동일한 로직
+export function buildSongKey(title: string, artist: string): string {
+  const normalize = (s: string) => s.trim().replace(/\s+/g, " ")
+  return `${normalize(title)}::${normalize(artist)}`
+}
+
+export type CrawledVocalRange = {
+  minNote: number
+  maxNote: number
+  minNoteLabel: string
+  maxNoteLabel: string
 }
 
 // The backend's login response doesn't include userId, so we resolve it

@@ -406,3 +406,45 @@ export function noteToKorean(note: string): string {
   const syllable = KOREAN_SOLFEGE[pitch] ?? pitch
   return `${octave}옥타브 ${syllable}`
 }
+
+
+// 내 음역대 vs 곡 음역대 비교해서 3단계 난이도 산출
+// 1 = 쉬움 (내 음역대 안에 다 들어옴)
+// 2 = 보통 (살짝 벗어남)
+// 3 = 어려움 (많이 벗어남)
+export function getDifficultyStars(
+    songLowestNote: string,
+    songHighestNote: string,
+    userLowestNote: string,
+    userHighestNote: string
+): 1 | 2 | 3 {
+  const songLow = noteToMidi(songLowestNote)
+  const songHigh = noteToMidi(songHighestNote)
+  const userLow = noteToMidi(userLowestNote)
+  const userHigh = noteToMidi(userHighestNote)
+
+  // 곡이 내 음역대 위/아래로 얼마나 벗어나는지(반음 수)
+  const overHigh = Math.max(0, songHigh - userHigh)
+  const overLow = Math.max(0, userLow - songLow)
+  const totalOver = overHigh + overLow
+
+  if (totalOver <= 0) return 1
+  if (totalOver <= 3) return 2
+  return 3
+}
+
+// 크롤링 곡용 — 이미 MIDI 숫자(minNote/maxNote)로 들어온 음역대를 직접 비교
+export function getDifficultyStarsFromMidi(
+    songMinNote: number,
+    songMaxNote: number,
+    userMinNote: number,
+    userMaxNote: number
+): 1 | 2 | 3 {
+  const overHigh = Math.max(0, songMaxNote - userMaxNote)
+  const overLow = Math.max(0, userMinNote - songMinNote)
+  const totalOver = overHigh + overLow
+
+  if (totalOver <= 0) return 1
+  if (totalOver <= 3) return 2
+  return 3
+}

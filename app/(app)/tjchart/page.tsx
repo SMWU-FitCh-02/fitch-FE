@@ -3,12 +3,12 @@
 import * as React from "react"
 import { TrendingUp } from "lucide-react"
 import { fetchTjTop100, TJ_CATEGORIES } from "@/lib/tjchart"
-import { type ChartEntry } from "@/lib/itunes"
-import { ChartPodiumItem, ChartSongRow } from "@/components/chart-song-row"
+import { ChartPodiumItem, ChartSongRow, type ChartEntryWithRange } from "@/components/chart-song-row"
+import { api, buildSongKey } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 export default function TjChartPage() {
-    const [chart, setChart] = React.useState<ChartEntry[]>([])
+    const [chart, setChart] = React.useState<ChartEntryWithRange[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState("")
     const [category, setCategory] = React.useState(TJ_CATEGORIES[0].value) // 종합
@@ -18,14 +18,32 @@ export default function TjChartPage() {
         setLoading(true)
         setError("")
         fetchTjTop100(100, category)
-            .then((data) => {
-                if (!cancelled) setChart(data)
+            .then(async (data) => {
+                if (cancelled) return
+                setChart(data)
+                setLoading(false)
+
+                // 음역대 데이터는 별도로 조회해서 붙임 (실패해도 차트 표시엔 영향 없음)
+                try {
+                    const ranges = await api.getVocalRanges(
+                        data.map((e) => ({ title: e.title, artist: e.artist }))
+                    )
+                    if (cancelled) return
+                    setChart((prev) =>
+                        prev.map((e) => {
+                            const r = ranges[buildSongKey(e.title, e.artist)]
+                            return r ? { ...e, minNote: r.minNote, maxNote: r.maxNote } : e
+                        })
+                    )
+                } catch {
+                    // 음역대 조회 실패는 조용히 무시
+                }
             })
             .catch(() => {
-                if (!cancelled) setError("차트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false)
+                if (!cancelled) {
+                    setError("차트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+                    setLoading(false)
+                }
             })
         return () => {
             cancelled = true

@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronRight, Mic, TrendingUp } from "lucide-react"
-import { FitchLogo, WaveBars } from "@/components/fitch-logo"
+import { ChevronRight, Mic, RefreshCw, TrendingUp } from "lucide-react"
+import { FitchLogo } from "@/components/fitch-logo"
 import { Button } from "@/components/ui/button"
 import { useStore } from "@/lib/store"
 import { SONGS } from "@/lib/songs"
@@ -22,7 +22,6 @@ export default function HomePage() {
     const [popular, setPopular] = React.useState<ChartEntry[]>([])
     const [popularLoading, setPopularLoading] = React.useState(true)
 
-    // keep the greeting/photo in sync with the backend (e.g. after a nickname change)
     React.useEffect(() => {
         if (!profile.userId) return
         let cancelled = false
@@ -44,10 +43,10 @@ export default function HomePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile.userId])
 
-    // TJ미디어 노래방 인기차트 (TOP100 중 상위 5곡 미리보기)
+    // TJ미디어 노래방 인기차트 (TOP100 전체)
     React.useEffect(() => {
         let cancelled = false
-        fetchTjTop100(5)
+        fetchTjTop100(100)
             .then((data) => {
                 if (!cancelled) setPopular(data)
             })
@@ -92,11 +91,8 @@ export default function HomePage() {
 
             {/* Range card */}
             {hasRange ? (
-                <Link
-                    href="/mypage/history"
-                    className="block rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4"
-                >
-                    <div className="flex items-center justify-between">
+                <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4">
+                    <div className="flex items-center justify-between gap-3">
                         <div>
                             <div className="text-[11px] text-primary font-bold">내 음역대</div>
                             <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
@@ -104,13 +100,16 @@ export default function HomePage() {
                                 <span className="text-muted-foreground text-sm">—</span>
                                 <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
                             </div>
-                            {/* <div className="mt-1 text-[11px] text-muted-foreground">
-                                편한음 | {noteToKorean(profile.range!.comfortableHigh)}
-                            </div>*/}
                         </div>
-                        <WaveBars />
+                        <Link
+                            href="/mypage/range-test"
+                            className="shrink-0 h-9 px-3 rounded-full bg-primary/20 border border-primary/40 text-primary text-xs font-bold flex items-center gap-1.5"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            재측정하기
+                        </Link>
                     </div>
-                </Link>
+                </div>
             ) : (
                 <Link
                     href="/mypage/range-test"
@@ -144,9 +143,9 @@ export default function HomePage() {
                 </Section>
             )}
 
-            {/* Popular chart preview — TJ미디어 노래방 인기차트 기준 */}
+            {/* Popular chart — TJ미디어 노래방 인기차트 기준, TOP 100 전체 */}
             <Section
-                title="실시간 인기차트"
+                title="인기차트"
                 subtitle="TJ미디어 노래방 인기차트 기준"
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
                 href="/tjchart"
@@ -161,16 +160,6 @@ export default function HomePage() {
                     </div>
                 )}
             </Section>
-
-            <Link
-                href="/mypage/range-test"
-                className="block rounded-[14px] border border-border/80 p-5 text-center"
-            >
-                <div className="text-sm font-semibold">다시 측정하기</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                    음역대가 달라졌다면 한 번 더 측정해보세요
-                </div>
-            </Link>
         </main>
     )
 }
