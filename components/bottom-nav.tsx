@@ -20,8 +20,8 @@ export function BottomNav() {
     const HomeIcon = home.icon
 
     return (
-        <nav className="sticky bottom-0 left-0 right-0 z-30 mt-auto px-4 pb-4 pt-2">
-            <div className="relative mx-auto max-w-md rounded-[19px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)]">
+        <nav className="sticky bottom-0 left-0 right-0 z-30 mt-auto px-[8px] pb-4 pt-2">
+            <div className="relative mx-auto max-w-md rounded-[26px] bg-surface-elevated/90 backdrop-blur border border-border/60 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)]">
                 <ul className="grid grid-cols-5 items-end">
                     {items.map((it) => {
                         const active = pathname === it.href || pathname.startsWith(it.href + "/")
