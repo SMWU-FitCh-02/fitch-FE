@@ -149,7 +149,7 @@ export default function HomePage() {
                 title="실시간 인기차트"
                 subtitle="TJ미디어 노래방 인기차트 기준"
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
-                href="/chart"
+                href="/tjchart"
             >
                 {popularLoading ? (
                     <div className="py-6 text-center text-xs text-muted-foreground">차트를 불러오는 중...</div>

@@ -56,18 +56,19 @@ function ymd(date: Date): string {
 
 export async function GET(req: NextRequest) {
     const limit = parseInt(req.nextUrl.searchParams.get("limit") || "100", 10)
+    const strType = req.nextUrl.searchParams.get("strType") || "" // "" = 종합, 그 외엔 장르 코드
 
     try {
         const { cookieHeader, csrfToken } = await tjFetchSession()
 
         const end = new Date()
-        const start = new Date(end.getTime() - 29 * 86400 * 1000) // TJ 기본 조회기간(최근 30일)과 동일하게
+        const start = new Date(end.getTime() - 29 * 86400 * 1000)
 
         const body = new URLSearchParams({
             chartType: "TOP",
             searchStartDate: ymd(start),
             searchEndDate: ymd(end),
-            strType: "",
+            strType,
         })
 
         const apiRes = await fetch(TJ_CHART_API, {
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
 
         const items = rawItems
             .map((row) => {
-                const no = String(row.pro ?? "").trim() // TJ 노래방 번호
+                const no = String(row.pro ?? "").trim()
                 const title = String(row.indexTitle ?? "").trim()
                 if (!no || !title) return null
                 return {
