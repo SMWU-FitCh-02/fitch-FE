@@ -112,9 +112,9 @@ export default function RecommendationsPage() {
       ? searchResults.map((e, i) => ({ ...e, rank: i + 1 }))
       : filtered
 
-  const top3 = displayList.slice(0, 3)
+  /*const top3 = displayList.slice(0, 3)
   const rest = displayList.slice(3)
-
+*/
   function chipClass(active: boolean) {
     return `w-full h-10 rounded-full border text-sm font-semibold transition-colors ${
         active
@@ -188,7 +188,7 @@ export default function RecommendationsPage() {
                   지우기
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground px-1 mb-4">
+              <p className="text-[11px] text-muted-foreground text-center px-1 mb-4">
                 AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
               </p>
             </>
@@ -243,19 +243,11 @@ export default function RecommendationsPage() {
                 </div>
             ) : (
                 <>
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                    {top3.map((entry) => (
-                        <ChartPodiumItem key={entry.id} entry={entry} />
+                  <div className="space-y-2">
+                    {displayList.map((entry) => (
+                        <ChartSongRow key={entry.id} entry={entry} />
                     ))}
                   </div>
-
-                  {rest.length > 0 && (
-                      <div className="space-y-2">
-                        {rest.map((entry) => (
-                            <ChartSongRow key={entry.id} entry={entry} />
-                        ))}
-                      </div>
-                  )}
                 </>
             )
         )}
