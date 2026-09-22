@@ -180,7 +180,10 @@ export default function RecommendationsPage() {
 
         {searchResults && (
             <>
-              <div className="flex items-center justify-between rounded-[12px] bg-primary/10 border border-primary/30 px-3 py-2 mb-2">
+              <p className="text-[11px] text-muted-foreground text-center px-1 mb-2">
+                AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
+              </p>
+              <div className="flex items-center justify-between rounded-[12px] bg-primary/10 border border-primary/30 px-3 py-2 mb-4">
         <span className="text-xs font-semibold text-primary truncate">
           "{searchedFor}" 검색 결과 {searchResults.length}곡
         </span>
@@ -188,9 +191,6 @@ export default function RecommendationsPage() {
                   지우기
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground text-center px-1 mb-4">
-                AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
-              </p>
             </>
         )}
 
