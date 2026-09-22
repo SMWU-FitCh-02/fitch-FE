@@ -24,8 +24,8 @@ export function computeDifficultyStars(
     const overHigh = Math.max(0, entry.maxNote - userMax)
     const overLow = Math.max(0, userMin - entry.minNote)
     const totalOver = overHigh + overLow
-    if (totalOver <= 0) return 1
-    if (totalOver <= 3) return 2
+    if (totalOver <= 2) return 1
+    if (totalOver <= 6) return 2
     return 3
 }
 

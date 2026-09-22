@@ -2,13 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft, Sparkles, Search, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Sparkles, Search, X, Loader2, Wand2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { api } from "@/lib/api"
 import { fetchTjChartWithRange, type ChartEntryWithRange } from "@/lib/tjchart"
 import { ChartPodiumItem, ChartSongRow, computeDifficultyStars } from "@/components/chart-song-row"
 import { Button } from "@/components/ui/button"
 import { noteToKorean } from "@/lib/songs"
+
 
 type Tier = 1 | 2 | 3
 type TierFilter = "all" | Tier
@@ -115,7 +116,7 @@ export default function RecommendationsPage() {
   const rest = displayList.slice(3)
 
   function chipClass(active: boolean) {
-    return `w-full h-11 rounded-[12px] border text-sm font-semibold transition-colors ${
+    return `w-full h-10 rounded-full border text-sm font-semibold transition-colors ${
         active
             ? "bg-primary text-primary-foreground border-primary"
             : "border-border bg-surface/40 text-muted-foreground"
@@ -144,7 +145,7 @@ export default function RecommendationsPage() {
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="예: 성시경 거리에서와 비슷한 느낌의 곡을 알려줘"
+                  placeholder="아이유 좋은날과 비슷한 느낌의 곡을 알려줘"
                   className="w-full h-12 pl-10 pr-10 rounded-[14px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {searchInput && (
@@ -158,14 +159,22 @@ export default function RecommendationsPage() {
                   </button>
               )}
             </div>
-            <button
-                type="submit"
-                disabled={searching || !searchInput.trim()}
-                className="shrink-0 h-12 w-12 grid place-items-center rounded-[14px] bg-gradient-to-br from-primary to-brand text-white shadow-md shadow-primary/30 disabled:opacity-40 disabled:shadow-none transition-opacity"
-                aria-label="AI로 검색"
-            >
-              {searching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-            </button>
+
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-brand blur-md opacity-70 animate-pulse pointer-events-none" />
+              <button
+                  type="submit"
+                  disabled={searching || !searchInput.trim()}
+                  className="relative h-12 w-12 grid place-items-center rounded-2xl bg-gradient-to-br from-primary to-brand text-white shadow-lg shadow-primary/40 disabled:opacity-40 disabled:shadow-none transition-opacity"
+                  aria-label="AI로 검색"
+              >
+                {searching ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                    <Wand2 className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
         </form>
 
@@ -185,15 +194,18 @@ export default function RecommendationsPage() {
         )}
 
         {!searchResults && (
-            <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4 mb-5">
-              <div className="flex items-center gap-2 text-primary">
-                <Sparkles className="h-4 w-4" />
-                <span className="text-sm font-bold">맞춤 추천 결과</span>
-              </div>
+            <div className="flex items-center gap-2 text-primary mb-5">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-bold">
+        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 추천곡
+      </span>
               {!hasRange && (
-                  <Button variant="brand" size="sm" className="mt-3" asChild>
-                    <Link href="/mypage/range-test">음역대 측정하기</Link>
-                  </Button>
+                  <Link
+                      href="/mypage/range-test"
+                      className="ml-auto text-xs font-semibold text-primary underline underline-offset-2"
+                  >
+                    음역대 측정하기
+                  </Link>
               )}
             </div>
         )}
