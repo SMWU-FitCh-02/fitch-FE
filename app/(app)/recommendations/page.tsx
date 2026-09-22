@@ -187,11 +187,11 @@ export default function RecommendationsPage() {
                         AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
                     </p>
                     <div className="flex items-center justify-between px-1 mb-4">
-                      <span className="text-13 font-semibold text-primary truncate">
+                      <span className="text-sm font-semibold text-primary truncate">
                         "{searchedFor}" 검색 결과 {searchResults.length}곡
                       </span>
                         <button onClick={clearSearch}
-                                className="text-11 text-muted-foreground hover:text-foreground shrink-0 ml-2">
+                                className="text-[12px] text-muted-foreground hover:text-foreground shrink-0 ml-2">
                             지우기
                         </button>
                     </div>
@@ -205,7 +205,7 @@ export default function RecommendationsPage() {
             {!searchResults && (
                 <div className="flex items-center gap-2 text-primary mb-5">
                     <Sparkles className="h-4 w-4"/>
-                    <span className="text-sm font-bold">
+                    <span className="대 font-bold">
         {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 노래방 추천곡
       </span>
                     {!hasRange && (
