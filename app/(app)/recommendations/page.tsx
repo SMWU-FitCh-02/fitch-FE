@@ -115,7 +115,7 @@ export default function RecommendationsPage() {
   const rest = displayList.slice(3)
 
   function chipClass(active: boolean) {
-    return `shrink-0 h-9 px-4 rounded-full border text-xs font-semibold transition-colors ${
+    return `w-full h-11 rounded-[12px] border text-sm font-semibold transition-colors ${
         active
             ? "bg-primary text-primary-foreground border-primary"
             : "border-border bg-surface/40 text-muted-foreground"
@@ -137,35 +137,36 @@ export default function RecommendationsPage() {
 
         {/* AI 자연어 검색 */}
         <form onSubmit={handleSearch} className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="예: 성시경 거리에서와 비슷한 느낌의 곡을 알려줘"
-                className="w-full h-11 pl-10 pr-10 rounded-[12px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            {searchInput && (
-                <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 grid place-items-center text-muted-foreground hover:text-foreground"
-                    aria-label="검색어 지우기"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="예: 성시경 거리에서와 비슷한 느낌의 곡을 알려줘"
+                  className="w-full h-12 pl-10 pr-10 rounded-[14px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {searchInput && (
+                  <button
+                      type="button"
+                      onClick={clearSearch}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 grid place-items-center text-muted-foreground hover:text-foreground"
+                      aria-label="검색어 지우기"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+              )}
+            </div>
+            <button
+                type="submit"
+                disabled={searching || !searchInput.trim()}
+                className="shrink-0 h-12 w-12 grid place-items-center rounded-[14px] bg-gradient-to-br from-primary to-brand text-white shadow-md shadow-primary/30 disabled:opacity-40 disabled:shadow-none transition-opacity"
+                aria-label="AI로 검색"
+            >
+              {searching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+            </button>
           </div>
-          <Button type="submit" variant="brand" size="sm" className="mt-2 w-full" disabled={searching || !searchInput.trim()}>
-            {searching ? (
-                <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> AI가 찾는 중...
-              </span>
-            ) : (
-                "AI로 검색"
-            )}
-          </Button>
         </form>
 
         {searchResults && (
@@ -187,21 +188,7 @@ export default function RecommendationsPage() {
             <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4 mb-5">
               <div className="flex items-center gap-2 text-primary">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-xs font-bold">맞춤 추천 결과</span>
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
-                {hasRange ? (
-                    <>
-                      <span className="text-lg font-extrabold">{noteToKorean(profile.range!.lowestNote)}</span>
-                      <span className="text-muted-foreground text-sm">~</span>
-                      <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
-                      <span className="text-xs text-muted-foreground font-medium ml-1">음역대 기준 · TJ 인기차트</span>
-                    </>
-                ) : (
-                    <span className="text-lg font-extrabold leading-tight">
-                    음역대 측정 전이라 TJ 인기차트 전체를 보여드려요
-                  </span>
-                )}
+                <span className="text-sm font-bold">맞춤 추천 결과</span>
               </div>
               {!hasRange && (
                   <Button variant="brand" size="sm" className="mt-3" asChild>
@@ -212,7 +199,7 @@ export default function RecommendationsPage() {
         )}
 
         {!searchResults && hasRange && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 mb-4">
+            <div className="grid grid-cols-4 gap-2 mb-4">
               <button onClick={() => setTierFilter("all")} className={chipClass(tierFilter === "all")}>
                 전체
               </button>
