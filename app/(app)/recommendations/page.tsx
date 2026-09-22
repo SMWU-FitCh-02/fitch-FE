@@ -191,7 +191,7 @@ export default function RecommendationsPage() {
                         "{searchedFor}" 검색 결과 {searchResults.length}곡
                       </span>
                         <button onClick={clearSearch}
-                                className="text-12 text-muted-foreground hover:text-foreground shrink-0 ml-2">
+                                className="text-11 text-muted-foreground hover:text-foreground shrink-0 ml-2">
                             지우기
                         </button>
                     </div>
