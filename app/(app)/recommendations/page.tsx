@@ -179,14 +179,19 @@ export default function RecommendationsPage() {
         </form>
 
         {searchResults && (
-            <div className="flex items-center justify-between rounded-[12px] bg-primary/10 border border-primary/30 px-3 py-2 mb-4">
-              <span className="text-xs font-semibold text-primary truncate">
-                "{searchedFor}" 검색 결과 {searchResults.length}곡
-              </span>
-              <button onClick={clearSearch} className="text-xs text-muted-foreground hover:text-foreground shrink-0 ml-2">
-                지우기
-              </button>
-            </div>
+            <>
+              <div className="flex items-center justify-between rounded-[12px] bg-primary/10 border border-primary/30 px-3 py-2 mb-2">
+        <span className="text-xs font-semibold text-primary truncate">
+          "{searchedFor}" 검색 결과 {searchResults.length}곡
+        </span>
+                <button onClick={clearSearch} className="text-xs text-muted-foreground hover:text-foreground shrink-0 ml-2">
+                  지우기
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground px-1 mb-4">
+                AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
+              </p>
+            </>
         )}
 
         {searchError && (
@@ -197,7 +202,7 @@ export default function RecommendationsPage() {
             <div className="flex items-center gap-2 text-primary mb-5">
               <Sparkles className="h-4 w-4" />
               <span className="text-sm font-bold">
-        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 추천곡
+        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 노래방 추천곡
       </span>
               {!hasRange && (
                   <Link
