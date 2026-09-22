@@ -205,8 +205,8 @@ export default function RecommendationsPage() {
             {!searchResults && (
                 <div className="flex items-center gap-2 text-primary mb-5">
                     <Sparkles className="h-4 w-4"/>
-                    <span className="대 font-bold">
-        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 노래방 추천곡
+                    <span className="text-sm font-bold">
+                        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 노래방 추천곡
       </span>
                     {!hasRange && (
                         <Link
@@ -236,23 +236,18 @@ export default function RecommendationsPage() {
                 <div className="text-center text-sm text-muted-foreground py-12">불러오는 중...</div>
             )}
 
-            {!loading && error && (
-                <div className="text-center text-sm text-destructive py-12">{error}</div>
-            )}
-
             {!loading && !error && (
                 displayList.length === 0 ? (
-                    <div className="text-center text-sm text-muted-foreground py-12">
+                    <div
+                        className="min-h-[50vh] flex items-center justify-center text-center text-sm text-muted-foreground px-6">
                         {searchResults ? "검색 결과가 없어요. 다른 검색어로 시도해보세요." : "조건에 맞는 곡이 없어요."}
                     </div>
                 ) : (
-                    <>
-                        <div className="space-y-2">
-                            {displayList.map((entry) => (
-                                <ChartSongRow key={entry.id} entry={entry}/>
-                            ))}
-                        </div>
-                    </>
+                    <div className="space-y-2">
+                        {displayList.map((entry) => (
+                            <ChartSongRow key={entry.id} entry={entry}/>
+                        ))}
+                    </div>
                 )
             )}
         </main>
