@@ -10,18 +10,28 @@ export type ChartEntryWithRange = ChartEntry & {
     maxNote?: number
 }
 
-// 크롤링 곡의 minNote/maxNote(MIDI)와 내 음역대를 비교해 1~3점 난이도 산출
-function useDifficultyStars(entry: ChartEntryWithRange): 1 | 2 | 3 | null {
-    const { profile } = useStore()
-    if (entry.minNote == null || entry.maxNote == null || !profile.range) return null
-    const userMin = noteToMidi(profile.range.lowestNote)
-    const userMax = noteToMidi(profile.range.highestNote)
+type VocalRange = { lowestNote: string; highestNote: string }
+
+// 크롤링 곡의 minNote/maxNote(MIDI)와 사용자 음역대를 비교해 1~3점 난이도 산출.
+// 훅 밖(목록 정렬/필터링 등)에서도 쓸 수 있도록 순수 함수로 분리해둠.
+export function computeDifficultyStars(
+    entry: ChartEntryWithRange,
+    range?: VocalRange | null
+): 1 | 2 | 3 | null {
+    if (entry.minNote == null || entry.maxNote == null || !range) return null
+    const userMin = noteToMidi(range.lowestNote)
+    const userMax = noteToMidi(range.highestNote)
     const overHigh = Math.max(0, entry.maxNote - userMax)
     const overLow = Math.max(0, userMin - entry.minNote)
     const totalOver = overHigh + overLow
     if (totalOver <= 0) return 1
     if (totalOver <= 3) return 2
     return 3
+}
+
+function useDifficultyStars(entry: ChartEntryWithRange): 1 | 2 | 3 | null {
+    const { profile } = useStore()
+    return computeDifficultyStars(entry, profile.range)
 }
 
 // 앨범 커버 위에 올라가는 작은 별 뱃지 (어느 배경에서도 잘 보이도록 어두운 배경 + 색 텍스트)

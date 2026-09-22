@@ -1,4 +1,5 @@
 import type { ChartEntry } from "./itunes"
+import { api, buildSongKey } from "@/lib/api"
 
 // TJ미디어 장르 코드 (버튼 순서대로 순번이 매겨져 있음)
 export type TjCategory = {
@@ -39,4 +40,35 @@ export async function fetchTjTop100(limit = 5, strType = ""): Promise<ChartEntry
         releaseDate: "",
         itunesUrl: "",
     }))
+}
+
+export type ChartEntryWithRange = ChartEntry & {
+    minNote?: number
+    maxNote?: number
+}
+
+// fetchTjTop100과 동일하게 TJ차트를 불러오되, 오프라인으로 크롤링/분석해둔
+// 음역대(minNote/maxNote)를 title+artist 기준으로 매칭해 붙여준다.
+// /recommendations처럼 "내 음역대에 맞는 곡"을 걸러야 하는 화면에서 사용.
+export async function fetchTjChartWithRange(limit = 100, strType = ""): Promise<ChartEntryWithRange[]> {
+    const entries = await fetchTjTop100(limit, strType)
+    const withRange: ChartEntryWithRange[] = entries.map((e) => ({ ...e }))
+
+    try {
+        const rangeMap = await api.getVocalRanges(
+            withRange.map((e) => ({ title: e.title, artist: e.artist }))
+        )
+        for (const entry of withRange) {
+            const key = buildSongKey(entry.title, entry.artist)
+            const r = rangeMap[key]
+            if (r) {
+                entry.minNote = r.minNote
+                entry.maxNote = r.maxNote
+            }
+        }
+    } catch {
+        // 음역대 조회가 실패해도 차트 자체는 보여준다 (별 표시만 비게 됨)
+    }
+
+    return withRange
 }
