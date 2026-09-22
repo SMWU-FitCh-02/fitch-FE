@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft, Sparkles } from "lucide-react"
+import { ArrowLeft, Sparkles, Search, X, Loader2 } from "lucide-react"
 import { useStore } from "@/lib/store"
+import { api } from "@/lib/api"
 import { fetchTjChartWithRange, type ChartEntryWithRange } from "@/lib/tjchart"
 import { ChartPodiumItem, ChartSongRow, computeDifficultyStars } from "@/components/chart-song-row"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,13 @@ export default function RecommendationsPage() {
   const [error, setError] = React.useState("")
   const [tierFilter, setTierFilter] = React.useState<TierFilter>("all")
 
+  // AI 자연어 검색
+  const [searchInput, setSearchInput] = React.useState("")
+  const [searching, setSearching] = React.useState(false)
+  const [searchError, setSearchError] = React.useState("")
+  const [searchResults, setSearchResults] = React.useState<ChartEntryWithRange[] | null>(null)
+  const [searchedFor, setSearchedFor] = React.useState("")
+
   React.useEffect(() => {
     let cancelled = false
     async function load() {
@@ -47,6 +55,37 @@ export default function RecommendationsPage() {
     }
   }, [])
 
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    const q = searchInput.trim()
+    if (!q || entries.length === 0) return
+
+    setSearching(true)
+    setSearchError("")
+    try {
+      const { matchedIndices } = await api.searchRecommend(
+          q,
+          entries.map((e) => ({ title: e.title, artist: e.artist }))
+      )
+      const matched = matchedIndices
+          .map((i) => entries[i])
+          .filter((e): e is ChartEntryWithRange => !!e)
+      setSearchResults(matched)
+      setSearchedFor(q)
+    } catch {
+      setSearchError("검색에 실패했어요. 잠시 후 다시 시도해주세요.")
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function clearSearch() {
+    setSearchInput("")
+    setSearchResults(null)
+    setSearchedFor("")
+    setSearchError("")
+  }
+
   // 각 곡에 대해 내 음역대 기준 난이도(1~3점)를 미리 계산해둔다.
   const withStars = React.useMemo(
       () => entries.map((entry) => ({ entry, stars: computeDifficultyStars(entry, profile.range) })),
@@ -57,21 +96,23 @@ export default function RecommendationsPage() {
     let list = withStars
 
     if (hasRange) {
-      // 음역대 데이터가 확보된 곡만 추천 대상으로 삼는다 (없으면 맞는지 판단 불가)
       list = list.filter((x) => x.stars !== null)
       if (tierFilter !== "all") {
         list = list.filter((x) => x.stars === tierFilter)
       }
-      // 가장 잘 맞는 곡(1점)부터 정렬
       list = [...list].sort((a, b) => (a.stars ?? 99) - (b.stars ?? 99))
     }
-    // 음역대 측정 전이면 TJ 차트 순위 그대로 보여준다 (list는 원래 순서 유지)
 
     return list.map((x, i) => ({ ...x.entry, rank: i + 1 }))
   }, [withStars, hasRange, tierFilter])
 
-  const top3 = filtered.slice(0, 3)
-  const rest = filtered.slice(3)
+  // 검색 결과가 있으면 그걸 보여주고, 없으면 기존 음역대 기반 추천을 보여준다.
+  const displayList = searchResults
+      ? searchResults.map((e, i) => ({ ...e, rank: i + 1 }))
+      : filtered
+
+  const top3 = displayList.slice(0, 3)
+  const rest = displayList.slice(3)
 
   function chipClass(active: boolean) {
     return `shrink-0 h-9 px-4 rounded-full border text-xs font-semibold transition-colors ${
@@ -94,33 +135,83 @@ export default function RecommendationsPage() {
           <div className="h-10 w-10" />
         </header>
 
-        <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4 mb-5">
-          <div className="flex items-center gap-2 text-primary">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-bold">맞춤 추천 결과</span>
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
-            {hasRange ? (
-                <>
-                  <span className="text-lg font-extrabold">{noteToKorean(profile.range!.lowestNote)}</span>
-                  <span className="text-muted-foreground text-sm">~</span>
-                  <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
-                  <span className="text-xs text-muted-foreground font-medium ml-1">음역대 기준 · TJ 인기차트</span>
-                </>
-            ) : (
-                <span className="text-lg font-extrabold leading-tight">
-                  음역대 측정 전이라 TJ 인기차트 전체를 보여드려요
-                </span>
+        {/* AI 자연어 검색 */}
+        <form onSubmit={handleSearch} className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="예: 성시경 거리에서와 비슷한 느낌의 곡을 알려줘"
+                className="w-full h-11 pl-10 pr-10 rounded-[12px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {searchInput && (
+                <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 grid place-items-center text-muted-foreground hover:text-foreground"
+                    aria-label="검색어 지우기"
+                >
+                  <X className="h-4 w-4" />
+                </button>
             )}
           </div>
-          {!hasRange && (
-              <Button variant="brand" size="sm" className="mt-3" asChild>
-                <Link href="/mypage/range-test">음역대 측정하기</Link>
-              </Button>
-          )}
-        </div>
+          <Button type="submit" variant="brand" size="sm" className="mt-2 w-full" disabled={searching || !searchInput.trim()}>
+            {searching ? (
+                <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> AI가 찾는 중...
+              </span>
+            ) : (
+                "AI로 검색"
+            )}
+          </Button>
+        </form>
 
-        {hasRange && (
+        {searchResults && (
+            <div className="flex items-center justify-between rounded-[12px] bg-primary/10 border border-primary/30 px-3 py-2 mb-4">
+              <span className="text-xs font-semibold text-primary truncate">
+                "{searchedFor}" 검색 결과 {searchResults.length}곡
+              </span>
+              <button onClick={clearSearch} className="text-xs text-muted-foreground hover:text-foreground shrink-0 ml-2">
+                지우기
+              </button>
+            </div>
+        )}
+
+        {searchError && (
+            <div className="text-xs text-destructive mb-4 px-1">{searchError}</div>
+        )}
+
+        {!searchResults && (
+            <div className="rounded-[14px] bg-gradient-to-br from-primary/15 to-brand/15 border border-primary/30 p-4 mb-5">
+              <div className="flex items-center gap-2 text-primary">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-xs font-bold">맞춤 추천 결과</span>
+              </div>
+              <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                {hasRange ? (
+                    <>
+                      <span className="text-lg font-extrabold">{noteToKorean(profile.range!.lowestNote)}</span>
+                      <span className="text-muted-foreground text-sm">~</span>
+                      <span className="text-lg font-extrabold text-brand">{noteToKorean(profile.range!.highestNote)}</span>
+                      <span className="text-xs text-muted-foreground font-medium ml-1">음역대 기준 · TJ 인기차트</span>
+                    </>
+                ) : (
+                    <span className="text-lg font-extrabold leading-tight">
+                    음역대 측정 전이라 TJ 인기차트 전체를 보여드려요
+                  </span>
+                )}
+              </div>
+              {!hasRange && (
+                  <Button variant="brand" size="sm" className="mt-3" asChild>
+                    <Link href="/mypage/range-test">음역대 측정하기</Link>
+                  </Button>
+              )}
+            </div>
+        )}
+
+        {!searchResults && hasRange && (
             <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 mb-4">
               <button onClick={() => setTierFilter("all")} className={chipClass(tierFilter === "all")}>
                 전체
@@ -142,9 +233,9 @@ export default function RecommendationsPage() {
         )}
 
         {!loading && !error && (
-            filtered.length === 0 ? (
+            displayList.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-12">
-                  조건에 맞는 곡이 없어요.
+                  {searchResults ? "검색 결과가 없어요. 다른 검색어로 시도해보세요." : "조건에 맞는 곡이 없어요."}
                 </div>
             ) : (
                 <>

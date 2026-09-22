@@ -143,6 +143,17 @@ export const api = {
       body: JSON.stringify(songs),
     })
   },
+  // AI 자연어 검색: candidates 중에서 query에 어울리는 곡들의 인덱스를 돌려받음
+  searchRecommend(
+      query: string,
+      candidates: { title: string; artist: string }[]
+  ): Promise<{ matchedIndices: number[] }> {
+    return request(`/recommend/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, candidates }),
+    })
+  },
 }
 
 
@@ -222,3 +233,4 @@ export async function findUserIdByUsername(username: string, maxId = 50): Promis
   }
   return null
 }
+
