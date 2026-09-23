@@ -52,16 +52,13 @@ export default function InfoPage() {
   }
 
   const passwordsMatch = password.length > 0 && password === passwordConfirm
-  const birthDateValid = /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
+  //const birthDateValid = /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
   const canNext =
       name.trim().length > 0 &&
       username.trim().length > 0 &&
       usernameCheck === "available" &&
       password.length >= 8 &&
-      passwordsMatch &&
-      //email.includes("@") &&
-      //birthDateValid &&
-      //phoneNumber.trim().length > 0
+      passwordsMatch
 
   async function next() {
     if (!canNext) return
@@ -76,9 +73,6 @@ export default function InfoPage() {
           password,
           name: name.trim(),
           nickname: name.trim(),
-          //email: email.trim(),
-          //birthDate,
-          //phoneNumber: phoneNumber.trim(),
           gender,
         }),
       })
@@ -103,7 +97,7 @@ export default function InfoPage() {
         ...DEFAULT_PROFILE,
         name: name.trim(),
         username: username.trim(),
-        email: email.trim(),
+        nickname: name.trim(),
         userId: registerBody?.userId,
         loggedIn: true,
       }))
@@ -199,48 +193,48 @@ export default function InfoPage() {
             )}
           </div>
 
-          <div className="space-y-1.5">
+          {/*<div className="space-y-1.5">
             <Label htmlFor="email">이메일</Label>
             <Input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                value={email}
+                //value={email}
                 onChange={(e) => setEmail(e.target.value)}
             />
-          </div>
+          </div>*/}
 
-          <div className="space-y-1.5">
+          {/*<div className="space-y-1.5">
             <Label htmlFor="birthDate">생년월일</Label>
             <Input
                 id="birthDate"
                 type="text"
                 inputMode="numeric"
                 placeholder="YYYY-MM-DD"
-                value={birthDate}
+                //value={birthDate}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/\D/g, "").slice(0, 8)
                   let formatted = digits
                   if (digits.length > 4) formatted = `${digits.slice(0, 4)}-${digits.slice(4)}`
                   if (digits.length > 6) formatted = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`
-                  setBirthDate(formatted)
+                  //setBirthDate(formatted)
                 }}
                 maxLength={10}
             />
-            {birthDate.length > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) && (
+            //{birthDate.length > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) && (
                 <p className="text-xs text-destructive">생년월일 8자리를 입력해주세요. (예: 20000115)</p>
             )}
           </div>
-
-          <div className="space-y-1.5">
+*/}
+          {/*<div className="space-y-1.5">
             <Label htmlFor="phoneNumber">전화번호</Label>
             <Input
                 id="phoneNumber"
                 placeholder="010-0000-0000"
-                value={phoneNumber}
+                //value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
             />
-          </div>
+          </div>*/}
 
           <div className="space-y-1.5">
             <Label>성별</Label>
