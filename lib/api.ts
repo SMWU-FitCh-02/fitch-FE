@@ -103,6 +103,7 @@ export const api = {
   getSongs() {
     return request("/songs")
   },
+
   getSong(songId: number) {
     return request(`/songs/${songId}`)
   },
@@ -161,6 +162,7 @@ export const api = {
       body: JSON.stringify({ preferredGenres: genres.join(",") }),
     })
   },
+
 
 }
 

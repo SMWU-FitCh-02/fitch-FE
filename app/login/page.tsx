@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { FitchLogo } from "@/components/fitch-logo"
 import { useStore } from "@/lib/store"
-import { decodeJwtSubject, findUserIdByUsername } from "@/lib/api"
+import { api, decodeJwtSubject, findUserIdByUsername } from "@/lib/api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
@@ -43,10 +43,19 @@ export default function LoginPage() {
       const subject = decodeJwtSubject(data.accessToken) || username
       const resolvedUserId = (await findUserIdByUsername(subject)) ?? undefined
 
+      let nickname: string | undefined
+      if (resolvedUserId) {
+        try {
+          const user = await api.getUser(resolvedUserId)
+          nickname = user.nickname
+        } catch {}
+      }
+
       setProfile((p) => ({
         ...p,
         name: p.name || username,
         username,
+        nickname,
         userId: resolvedUserId,
         loggedIn: true,
       }))
