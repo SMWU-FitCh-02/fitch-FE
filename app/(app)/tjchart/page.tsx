@@ -97,7 +97,39 @@ export default function TjChartPage() {
                 ))}
             </div>
 
-            {/* 이하 동일 */}
+            {loading && (
+                <div className="py-16 text-center text-sm text-muted-foreground">차트를 불러오는 중...</div>
+            )}
+
+            {!loading && error && (
+                <div className="py-16 text-center text-sm text-destructive">{error}</div>
+            )}
+
+            {!loading && !error && chart.length === 0 && (
+                <div className="py-16 text-center text-sm text-muted-foreground">
+                    해당하는 곡이 아직 없어요.
+                </div>
+            )}
+
+            {!loading && !error && chart.length > 0 && (
+                <>
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                        {top3.map((entry) => (
+                            <ChartPodiumItem key={entry.id} entry={entry} />
+                        ))}
+                    </div>
+
+                    <div className="flex items-center justify-between px-1 mb-3">
+                        <h2 className="text-sm font-bold">4위 이하</h2>
+                    </div>
+
+                    <div className="space-y-2">
+                        {rest.map((entry) => (
+                            <ChartSongRow key={entry.id} entry={entry} />
+                        ))}
+                    </div>
+                </>
+            )}
         </main>
     )
 }
