@@ -15,6 +15,34 @@ const FILTERS: { value: GenderFilter; label: string }[] = [
     {value: "FEMALE", label: "여성곡"},
 ]
 
+// 위로 스크롤하면 숨기고, 아래로 스크롤하면 보이게
+function useHideOnScrollUp() {
+    const [hidden, setHidden] = React.useState(false)
+    const lastY = React.useRef(0)
+
+    React.useEffect(() => {
+        lastY.current = window.scrollY
+
+        function handleScroll() {
+            const y = window.scrollY
+            const delta = y - lastY.current
+
+            if (delta < -4) {
+                setHidden(true)
+            } else if (delta > 4) {
+                setHidden(false)
+            }
+
+            lastY.current = y
+        }
+
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
+
+    return hidden
+}
+
 export default function ChartPage() {
     const [chart, setChart] = React.useState<ChartEntry[]>([])
     const [source, setSource] = React.useState<ChartSource>("melon")
@@ -22,6 +50,7 @@ export default function ChartPage() {
     const [error, setError] = React.useState("")
     const [genderMap, setGenderMap] = React.useState<Record<string, ArtistGender>>({})
     const [filter, setFilter] = React.useState<GenderFilter>("ALL")
+    const hidden = useHideOnScrollUp()
 
     React.useEffect(() => {
         let cancelled = false
@@ -46,9 +75,6 @@ export default function ChartPage() {
     React.useEffect(() => {
         if (chart.length === 0) return
         let cancelled = false
-        // NFC로 정규화 — 한글/악센트 문자가 완성형(NFC)/분해형(NFD) 두 가지로
-        // 표현될 수 있는 경우를 대비한 안전장치 (실제 원인은 멜론 쪽 &nbsp;였지만
-        // 유니코드 조합형 문제도 같이 막아두는 게 안전함)
         const uniqueArtists = Array.from(
             new Set(chart.map((c) => c.artist.normalize("NFC")))
         )
@@ -75,13 +101,11 @@ export default function ChartPage() {
             const g = genderMap[entry.artist.normalize("NFC")]
             return g === filter || g === "MIXED"
         })
-        // re-rank 1, 2, 3... within the filtered (gender-only) list
         return matched.map((entry, i) => ({...entry, rank: i + 1}))
     }, [chart, filter, genderMap])
 
     const top3 = filtered.slice(0, 3)
     const rest = filtered.slice(3)
-
     const filterLabel = FILTERS.find((f) => f.value === filter)?.label
 
     return (
@@ -93,27 +117,38 @@ export default function ChartPage() {
                 </div>
                 <h1 className="text-2xl font-extrabold">인기차트</h1>
                 <div className="mt-1 text-xs text-muted-foreground">
-                    {filter === "ALL" ? "대한민국 TOP 100" : `TOP 100 중 ${filterLabel}`}
+                    대한민국 TOP 100{filter !== "ALL" ? ` · ${filterLabel}` : ""}
                 </div>
             </header>
 
-            <div className="flex gap-2 mb-5 px-1">
-                {FILTERS.map((f) => (
-                    <button
-                        key={f.value}
-                        type="button"
-                        onClick={() => setFilter(f.value)}
-                        className={cn(
-                            "h-9 px-4 rounded-full text-xs font-bold border-2 transition-colors",
-                            filter === f.value
-                                ? "border-primary bg-primary/10 text-foreground"
-                                : "border-border bg-surface/40 text-muted-foreground"
-                        )}
-                    >
-                        {f.label}
-                    </button>
-                ))}
+            {/* 떠 있는 필터 - 화면에 고정, 스크롤 방향에 따라 숨김/노출 */}
+            <div
+                className={cn(
+                    "fixed inset-x-0 top-[104px] z-20 flex justify-center px-[8px] transition-all duration-300",
+                    hidden ? "opacity-0 -translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
+                )}
+            >
+                <div className="inline-flex items-center gap-1 p-1 rounded-full bg-surface-elevated/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)]">
+                    {FILTERS.map((f) => (
+                        <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => setFilter(f.value)}
+                            className={cn(
+                                "h-8 px-4 rounded-full text-xs font-bold transition-colors",
+                                filter === f.value
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            {/* 필터가 떠서 가리는 만큼 여백 확보 */}
+            <div className="h-14" />
 
             {loading && (
                 <div className="py-16 text-center text-sm text-muted-foreground">차트를 불러오는 중...</div>
