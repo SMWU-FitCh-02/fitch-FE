@@ -69,13 +69,27 @@ export default function KeyAdjustmentPage() {
         .slice(0, 20)
   }, [query, allSongs])
 
-  React.useEffect(() => {
-    if (selected && userMaxNote != null) {
-      setOffset(userMaxNote - selected.maxNote)
-    } else {
-      setOffset(0)
-    }
-  }, [selected, userMaxNote])
+  const [adjustedKey, setAdjustedKey] = React.useState<string | null>(null)
+const [originalKey, setOriginalKey] = React.useState<string | null>(null)
+
+React.useEffect(() => {
+  if (!selected || !profile.userId) {
+    setOffset(0)
+    return
+  }
+  let cancelled = false
+  api.keyAdjust(selected.songId, profile.userId)
+    .then((res) => {
+      if (cancelled) return
+      setOffset(res.adjust)
+      setOriginalKey(res.originalKey)
+      setAdjustedKey(res.adjustedKey)
+    })
+    .catch(() => {
+      if (!cancelled) setOffset(0)
+    })
+  return () => { cancelled = true }
+}, [selected, profile.userId])
 
   React.useEffect(() => {
     if (!selected) {
