@@ -9,9 +9,8 @@ import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
 const GENRES = [
-  "발라드", "K-POP", "힙합",
-  "인디", "밴드", "댄스",
-  "R&B", "팝", "OST",
+    "발라드", "댄스", "POP",
+    "랩/힙합", "R&B/어반", "OST",
 ]
 
 export default function GenrePreferencesPage() {
