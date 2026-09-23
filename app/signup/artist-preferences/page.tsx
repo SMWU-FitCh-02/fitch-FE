@@ -59,8 +59,7 @@ export default function GenrePreferencesPage() {
                 하나 이상 선택해주세요. 취향에 맞는 곡을 찾아드려요.
             </p>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 flex-1">
-                {displayGenres.map((genre) => {
+            <div className="mt-8 grid grid-cols-3 gap-3 flex-1 content-center">                {displayGenres.map((genre) => {
                     const on = selected.includes(genre)
                     return (
                         <button
