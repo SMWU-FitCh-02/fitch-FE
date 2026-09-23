@@ -30,9 +30,9 @@ export default function InfoPage() {
   const [usernameCheck, setUsernameCheck] = React.useState<CheckState>("idle")
   const [password, setPassword] = React.useState("")
   const [passwordConfirm, setPasswordConfirm] = React.useState("")
-  const [email, setEmail] = React.useState("")
-  const [birthDate, setBirthDate] = React.useState("")
-  const [phoneNumber, setPhoneNumber] = React.useState("")
+  //const [email, setEmail] = React.useState("")
+  //const [birthDate, setBirthDate] = React.useState("")
+  //const [phoneNumber, setPhoneNumber] = React.useState("")
   const [gender, setGender] = React.useState<Gender | null>(null)
   const [submitError, setSubmitError] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
@@ -59,9 +59,9 @@ export default function InfoPage() {
       usernameCheck === "available" &&
       password.length >= 8 &&
       passwordsMatch &&
-      email.includes("@") &&
-      birthDateValid &&
-      phoneNumber.trim().length > 0
+      //email.includes("@") &&
+      //birthDateValid &&
+      //phoneNumber.trim().length > 0
 
   async function next() {
     if (!canNext) return
@@ -76,9 +76,9 @@ export default function InfoPage() {
           password,
           name: name.trim(),
           nickname: name.trim(),
-          email: email.trim(),
-          birthDate,
-          phoneNumber: phoneNumber.trim(),
+          //email: email.trim(),
+          //birthDate,
+          //phoneNumber: phoneNumber.trim(),
           gender,
         }),
       })
