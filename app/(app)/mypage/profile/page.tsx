@@ -19,6 +19,8 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "OTHER", label: "선택 안 함" },
 ]
 
+const GENRES = ["발라드", "댄스", "POP", "랩/힙합", "R&B/어반", "OST"]
+
 async function fileToResizedDataUrl(file: File, maxSize = 512, quality = 0.85): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -51,10 +53,10 @@ export default function ProfileEditPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
   const [name, setName] = React.useState(profile.name)
-  const [email, setEmail] = React.useState(profile.email)
   const [avatar, setAvatar] = React.useState(profile.avatar || "🎤")
   const [gender, setGender] = React.useState<Gender | null>(null)
   const [photo, setPhoto] = React.useState<string | null>(profile.profileImage ?? null)
+  const [selectedGenres, setSelectedGenres] = React.useState<string[]>(profile.preferredGenres || [])
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -69,9 +71,11 @@ export default function ProfileEditPage() {
         .then((u) => {
           if (cancelled) return
           setName(u.nickname || u.name || "")
-          setEmail(u.email || "")
           setGender((u.gender as Gender) ?? null)
           setPhoto(u.profileImage ?? null)
+          if (u.preferredGenres) {
+            setSelectedGenres(u.preferredGenres.split(",").filter(Boolean))
+          }
           setProfile((p) => ({ ...p, profileImage: u.profileImage ?? null }))
         })
         .catch(() => {})
@@ -80,6 +84,18 @@ export default function ProfileEditPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.userId])
+
+  function toggleGenre(genre: string) {
+    setSelectedGenres((cur) =>
+        cur.includes(genre) ? cur.filter((g) => g !== genre) : [...cur, genre]
+    )
+  }
+
+  // 선택한 것부터 클릭한 순서대로, 나머지는 뒤에
+  const displayGenres = React.useMemo(
+      () => [...selectedGenres, ...GENRES.filter((g) => !selectedGenres.includes(g))],
+      [selectedGenres]
+  )
 
   async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -95,7 +111,13 @@ export default function ProfileEditPage() {
 
   async function save() {
     if (!profile.userId) {
-      setProfile((p) => ({ ...p, name, email, avatar, profileImage: photo }))
+      setProfile((p) => ({
+        ...p,
+        name,
+        avatar,
+        profileImage: photo,
+        preferredGenres: selectedGenres,
+      }))
       setSaved(true)
       setTimeout(() => router.back(), 800)
       return
@@ -106,16 +128,16 @@ export default function ProfileEditPage() {
     try {
       const updated = await api.updateUser(profile.userId, {
         nickname: name.trim(),
-        email: email.trim(),
         gender,
         profileImage: photo,
+        preferredGenres: selectedGenres.join(","),
       })
       setProfile((p) => ({
         ...p,
         name: updated.nickname || updated.name,
-        email: updated.email,
         avatar,
         profileImage: updated.profileImage ?? null,
+        preferredGenres: selectedGenres,
       }))
       setSaved(true)
       setTimeout(() => router.back(), 800)
@@ -189,15 +211,6 @@ export default function ProfileEditPage() {
             <Label htmlFor="name">닉네임</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="email">이메일</Label>
-            <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
 
           <div className="space-y-1.5">
             <Label>성별</Label>
@@ -217,6 +230,30 @@ export default function ProfileEditPage() {
                         )}
                     >
                       {opt.label}
+                    </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>좋아하는 장르</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {displayGenres.map((genre) => {
+                const on = selectedGenres.includes(genre)
+                return (
+                    <button
+                        key={genre}
+                        type="button"
+                        onClick={() => toggleGenre(genre)}
+                        className={cn(
+                            "h-11 rounded-[10px] border-2 text-sm font-semibold transition-colors",
+                            on
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "border-border bg-surface/40 text-muted-foreground"
+                        )}
+                    >
+                      {genre}
                     </button>
                 )
               })}
