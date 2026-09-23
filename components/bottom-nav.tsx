@@ -56,7 +56,7 @@ export function BottomNav() {
         <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2">
             <div
                 className={cn(
-                    "relative mx-auto max-w-md rounded-[35px] bg-surface-elevated/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom",
+                    "relative mx-auto max-w-md rounded-[35px] bg-surface-elevated/40 backdrop-blur-xl border border-white/80 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom",
                     shrunk ? "scale-85" : "scale-100"
                 )}
             >
