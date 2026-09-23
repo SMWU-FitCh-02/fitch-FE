@@ -51,26 +51,12 @@ export function BottomNav() {
         (it) => pathname === it.href || pathname.startsWith(it.href + "/")
     )
 
-    // 탭이 바뀌는 순간엔 글래스 효과가 반짝, 멈추면 수수한 회색 필로 가라앉음
-    const [isMoving, setIsMoving] = React.useState(false)
-    const prevIndexRef = React.useRef(activeIndex)
-
-    React.useEffect(() => {
-        if (prevIndexRef.current !== activeIndex && activeIndex >= 0) {
-            setIsMoving(true)
-            const t = setTimeout(() => setIsMoving(false), 320)
-            prevIndexRef.current = activeIndex
-            return () => clearTimeout(t)
-        }
-        prevIndexRef.current = activeIndex
-    }, [activeIndex])
-
     return (
         <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2">
             <div
                 className={cn(
                     "relative mx-auto max-w-md rounded-full bg-surface-elevated/50 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom p-1.5",
-                    shrunk ? "scale-95" : "scale-100"
+                    shrunk ? "scale-85" : "scale-100"
                 )}
             >
                 <ul className="relative grid grid-cols-5">
@@ -78,28 +64,9 @@ export function BottomNav() {
                         <li
                             aria-hidden
                             className="absolute inset-y-0 left-0 w-1/5 pointer-events-none transition-transform duration-300 ease-out"
-                            style={{
-                                transform: `translateX(${activeIndex * 100}%) scale(${isMoving ? 1.1 : 1})`,
-                            }}
+                            style={{ transform: `translateX(${activeIndex * 100}%)` }}
                         >
-                            {/* 평소: 은은한 회색 필 */}
-                            <div
-                                className="absolute inset-0.5 rounded-full bg-foreground/10 transition-opacity duration-300"
-                                style={{ opacity: isMoving ? 0 : 1 }}
-                            />
-                            {/* 이동 중: 반짝이는 글래스 필 */}
-                            <div
-                                className="absolute inset-0.5 rounded-full transition-opacity duration-300"
-                                style={{
-                                    opacity: isMoving ? 1 : 0,
-                                    backdropFilter: "blur(10px)",
-                                    background:
-                                        "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 100%)",
-                                    boxShadow:
-                                        "inset 0 1px 1.5px rgba(255,255,255,0.7), inset 0 -1px 3px rgba(0,0,0,0.2), 0 4px 14px rgba(0,0,0,0.18)",
-                                    border: "1px solid rgba(255,255,255,0.55)",
-                                }}
-                            />
+                            <div className="absolute inset-0.5 rounded-full bg-foreground/10" />
                         </li>
                     )}
 
