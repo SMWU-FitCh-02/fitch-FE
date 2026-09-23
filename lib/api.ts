@@ -154,6 +154,14 @@ export const api = {
       body: JSON.stringify({ query, candidates }),
     })
   },
+  updatePreferredGenres(userId: number, genres: string[]) {
+    return request(`/user/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferredGenres: genres.join(",") }),
+    })
+  },
+
 }
 
 
