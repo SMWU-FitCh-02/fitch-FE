@@ -21,6 +21,7 @@ export type LikedChartSong = {
 export type UserProfile = {
   name: string
   username?: string
+  nickname?: string
   userId?: number
   email: string
   age?: string
@@ -40,6 +41,7 @@ export type UserProfile = {
 export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   username: "",
+  nickname: "",
   email: "",
   preferredSongIds: [],
   preferredArtists: [],

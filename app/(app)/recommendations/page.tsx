@@ -206,8 +206,8 @@ export default function RecommendationsPage() {
                 <div className="flex items-center gap-2 text-primary mb-5">
                     <Sparkles className="h-4 w-4"/>
                     <span className="text-sm font-bold">
-                        {profile.username ? `${profile.username}님 ` : ""}음역대 맞춤 노래방 추천곡
-      </span>
+  {profile.nickname ? `${profile.nickname}님 ` : ""}음역대 맞춤 추천곡
+</span>
                     {!hasRange && (
                         <Link
                             href="/mypage/range-test"
