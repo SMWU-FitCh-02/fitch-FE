@@ -300,14 +300,18 @@ export default function ChartPage() {
 
             {!loading && !error && chart.length > 0 && (
                 <>
+                    {profile.range && (
+                        <p className="text-[11px] text-muted-foreground text-center mb-3">
+                            <span className="text-emerald-400">★</span> 쉬움 · {" "}
+                            <span className="text-amber-400">★★</span> 보통 · {" "}
+                            <span className="text-rose-400">★★★</span> 고난이도
+                        </p>
+                    )}
+
                     <div className="grid grid-cols-3 gap-2 mb-6">
                         {top3.map((entry) => (
                             <ChartPodiumItem key={entry.id} entry={entry} />
                         ))}
-                    </div>
-
-                    <div className="flex items-center justify-between px-1 mb-3">
-                        <h2 className="text-sm font-bold">4위 이하</h2>
                     </div>
 
                     <div className="space-y-2">
