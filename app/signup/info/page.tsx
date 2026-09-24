@@ -30,9 +30,6 @@ export default function InfoPage() {
   const [usernameCheck, setUsernameCheck] = React.useState<CheckState>("idle")
   const [password, setPassword] = React.useState("")
   const [passwordConfirm, setPasswordConfirm] = React.useState("")
-  //const [email, setEmail] = React.useState("")
-  //const [birthDate, setBirthDate] = React.useState("")
-  //const [phoneNumber, setPhoneNumber] = React.useState("")
   const [gender, setGender] = React.useState<Gender | null>(null)
   const [submitError, setSubmitError] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
@@ -52,7 +49,6 @@ export default function InfoPage() {
   }
 
   const passwordsMatch = password.length > 0 && password === passwordConfirm
-  //const birthDateValid = /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
   const canNext =
       name.trim().length > 0 &&
       username.trim().length > 0 &&
@@ -110,7 +106,8 @@ export default function InfoPage() {
   }
 
   return (
-      <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+3.5rem)]">        <SignupHeader step={2} total={5} />
+      <main className="min-h-dvh flex flex-col px-6 pb-32">
+        <SignupHeader step={2} total={5} />
         <h1 className="text-2xl font-extrabold">정보를 입력해주세요</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">맞춤 추천을 위한 기본 정보예요.</p>
 
@@ -192,49 +189,6 @@ export default function InfoPage() {
             )}
           </div>
 
-          {/*<div className="space-y-1.5">
-            <Label htmlFor="email">이메일</Label>
-            <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                //value={email}
-                onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>*/}
-
-          {/*<div className="space-y-1.5">
-            <Label htmlFor="birthDate">생년월일</Label>
-            <Input
-                id="birthDate"
-                type="text"
-                inputMode="numeric"
-                placeholder="YYYY-MM-DD"
-                //value={birthDate}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "").slice(0, 8)
-                  let formatted = digits
-                  if (digits.length > 4) formatted = `${digits.slice(0, 4)}-${digits.slice(4)}`
-                  if (digits.length > 6) formatted = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`
-                  //setBirthDate(formatted)
-                }}
-                maxLength={10}
-            />
-            //{birthDate.length > 0 && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) && (
-                <p className="text-xs text-destructive">생년월일 8자리를 입력해주세요. (예: 20000115)</p>
-            )}
-          </div>
-*/}
-          {/*<div className="space-y-1.5">
-            <Label htmlFor="phoneNumber">전화번호</Label>
-            <Input
-                id="phoneNumber"
-                placeholder="010-0000-0000"
-                //value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-            />
-          </div>*/}
-
           <div className="space-y-1.5">
             <Label>성별</Label>
             <p className="text-xs text-muted-foreground">
@@ -265,7 +219,7 @@ export default function InfoPage() {
 
         {submitError && <p className="mt-4 text-sm text-destructive">{submitError}</p>}
 
-        <div className="mt-auto pt-8">
+        <div className="fixed inset-x-0 bottom-0 z-30 px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <Button
               variant="brand"
               size="lg"
