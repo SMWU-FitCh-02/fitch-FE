@@ -56,7 +56,7 @@ export function BottomNav() {
             <div
                 className={cn(
                     "relative mx-auto max-w-md rounded-full bg-surface-elevated/50 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom p-1.5",
-                    shrunk ? "scale-75" : "scale-87"
+                    shrunk ? "scale-80" : "scale-90"
                 )}
             >
                 <ul className="relative grid grid-cols-5">
