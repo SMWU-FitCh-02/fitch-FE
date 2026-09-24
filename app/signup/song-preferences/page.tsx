@@ -39,8 +39,7 @@ export default function SongPreferencesPage() {
   const canNext = selected.length >= 3
 
   return (
-    <main className="min-h-dvh flex flex-col px-6 pb-8">
-      <SignupHeader step={3} total={5} />
+      <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)]">      <SignupHeader step={3} total={5} />
       <h1 className="text-2xl font-extrabold">좋아하는 노래를 골라주세요</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">
         3곡 이상 선택하면 더 정확한 추천을 받을 수 있어요.

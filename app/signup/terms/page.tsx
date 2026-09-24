@@ -33,8 +33,7 @@ export default function TermsPage() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col px-6 pb-8">
-      <SignupHeader step={1} total={5} />
+      <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)]">      <SignupHeader step={1} total={5} />
       <div>
         <h1 className="text-2xl font-extrabold">시작 전에 잠깐!</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
