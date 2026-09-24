@@ -65,8 +65,7 @@ export default function HomePage() {
     }, [profile.preferredArtists])
 
     return (
-        <main className="px-4 pt-4 pb-6 space-y-6">
-            <header className="flex items-center justify-between px-1">
+        <main className="px-4 pt-1 pb-6 space-y-6">            <header className="flex items-center justify-between px-1">
                 <FitchLogo />
                 <Link
                     href="/mypage"
