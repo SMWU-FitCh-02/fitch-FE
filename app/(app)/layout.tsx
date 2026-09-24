@@ -18,9 +18,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh">
-      <div className="flex-1 pb-24">{children}</div>
-      <BottomNav />
-    </div>
+      <div className="flex flex-col min-h-dvh pt-[env(safe-area-inset-top)]">
+        <div className="flex-1 pb-24">{children}</div>
+        <BottomNav />
+      </div>
   )
 }
