@@ -126,11 +126,18 @@ export default function LoginPage() {
         <Separator className="flex-1" />
       </div>
 
-      <div className="mt-6 space-y-3">
-        <Button variant="ghost" size="lg" className="w-full" asChild>
-          <Link href="/signup/terms">회원가입</Link>
-        </Button>
-      </div>
+        <div className="mt-6 space-y-3">
+          <Button
+              size="lg"
+              className="w-full bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+              asChild
+          >
+            <a href={`${API_BASE}/oauth2/authorization/kakao`}>카카오로 시작하기</a>
+          </Button>
+          <Button variant="ghost" size="lg" className="w-full" asChild>
+            <Link href="/signup/terms">회원가입</Link>
+          </Button>
+        </div>
 
       <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
         FitCh v0.2 · 노래방을 더 즐겁게
