@@ -68,8 +68,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col px-6 pt-6 pb-8">
-      <button
+      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">      <button
         type="button"
         onClick={() => router.back()}
         className="self-start h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"

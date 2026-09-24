@@ -2,7 +2,7 @@
   "name": "FitCh — 내 음역대에 맞는 노래 추천",
   "short_name": "FitCh",
   "description": "AI 음역대 분석 + 맞춤 노래 추천으로 노래방을 즐겁게",
-  "start_url": "/home",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
