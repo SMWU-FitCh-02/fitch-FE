@@ -33,8 +33,8 @@ export default function LibraryPage() {
   }, [profile.userId])
 
   return (
-    <main className="px-4 pt-4 pb-6">
-      <header className="px-1 mb-5">
+      <main className="px-4 pt-1 pb-6">
+        <header className="px-1 mb-5">
         <div className="text-xs text-muted-foreground">{profile.name || "FitCh 유저"}님의</div>
         <h1 className="text-2xl font-extrabold flex items-center gap-2">
           <BookmarkCheck className="h-6 w-6 text-primary" />
