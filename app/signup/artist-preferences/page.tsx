@@ -26,7 +26,6 @@ export default function GenrePreferencesPage() {
         )
     }
 
-    // 선택된 것부터 클릭한 순서대로, 그다음 안 고른 것들을 뒤에 배치
     const displayGenres = React.useMemo(
         () => [...selected, ...GENRES.filter((g) => !selected.includes(g))],
         [selected]
@@ -52,14 +51,15 @@ export default function GenrePreferencesPage() {
     const canNext = selected.length >= 1
 
     return (
-        <main className="min-h-dvh flex flex-col px-6 pb-8">
+        <main className="min-h-dvh flex flex-col px-6 pb-32">
             <SignupHeader step={4} total={5} />
             <h1 className="text-2xl font-extrabold">좋아하는 장르</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
                 하나 이상 선택해주세요. 취향에 맞는 곡을 찾아드려요.
             </p>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 flex-1 content-center">                {displayGenres.map((genre) => {
+            <div className="mt-8 grid grid-cols-3 gap-3 flex-1 content-center">
+                {displayGenres.map((genre) => {
                     const on = selected.includes(genre)
                     return (
                         <button
@@ -79,7 +79,7 @@ export default function GenrePreferencesPage() {
                 })}
             </div>
 
-            <div className="pt-6">
+            <div className="fixed inset-x-0 bottom-0 z-30 px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                 <Button
                     variant="brand"
                     size="lg"
