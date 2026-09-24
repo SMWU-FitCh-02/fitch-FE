@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -129,13 +129,13 @@ export default function LoginPage() {
         <div className="mt-6 space-y-3">
           <Button
               size="lg"
-              className="w-full bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+              className="w-full bg-[#FEE500] text-black hover:bg-[#FEE500]/90 gap-2"
               asChild
           >
-            <a href={`${API_BASE}/oauth2/authorization/kakao`}>카카오로 시작하기</a>
-          </Button>
-          <Button variant="ghost" size="lg" className="w-full" asChild>
-            <Link href="/signup/terms">회원가입</Link>
+            <a href={`${API_BASE}/oauth2/authorization/kakao`}>
+              <MessageCircle className="h-5 w-5 fill-black" />
+              카카오로 로그인 / 회원가입
+            </a>
           </Button>
         </div>
 
