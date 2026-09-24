@@ -191,16 +191,17 @@ export default function ChartPage() {
     return (
         <main className="px-4 pt-4 pb-28">
             <header className="px-1 mb-3">
-                <div className="text-xs text-primary font-bold flex items-center gap-1">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    {source === "tj" ? "TJ미디어 노래방 인기차트 기준" : chartSourceLabel(melonSource)}
-                </div>
-                <h1 className="text-2xl font-extrabold">인기차트</h1>
-                <div className="mt-1 text-xs text-muted-foreground">
-                    {source === "tj"
-                        ? categoryLabel === "종합" ? "TOP 100" : `TOP 100 중 ${categoryLabel}`
-                        : "대한민국 TOP 100"}
-                    {genderFilter !== "ALL" ? ` · ${genderLabel}` : ""}
+                <div className="text-sm font-bold flex items-center gap-1.5 flex-wrap">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <span className="text-primary">
+            {source === "tj" ? "TJ미디어 노래방 인기차트 기준" : chartSourceLabel(melonSource)}
+        </span>
+                    <span className="text-muted-foreground font-normal text-xs">
+            {source === "tj"
+                ? categoryLabel === "종합" ? "TOP 100" : `TOP 100 중 ${categoryLabel}`
+                : "대한민국 TOP 100"}
+                        {genderFilter !== "ALL" ? ` · ${genderLabel}` : ""}
+        </span>
                 </div>
             </header>
 
@@ -255,11 +256,11 @@ export default function ChartPage() {
             <div
                 className={cn(
                     "fixed inset-x-0 z-20 flex justify-center px-[8px] transition-all duration-300",
-                    "bottom-[calc(5.15rem+env(safe-area-inset-bottom))]",
+                    "bottom-[calc(4.8rem+env(safe-area-inset-bottom))]",
                     hidden ? "opacity-0 translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
                 )}
             >
-                <div className="relative inline-grid grid-cols-3 p-1 rounded-full bg-surface-elevated/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)]">
+                <div className="relative inline-grid grid-cols-3 p-1 rounded-full bg-surface-elevated backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)]">
                     <div
                         className="absolute inset-y-1 left-1 rounded-full bg-primary transition-transform duration-300 ease-out"
                         style={{
