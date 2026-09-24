@@ -13,7 +13,6 @@ import { useStore } from "@/lib/store"
 import { api, decodeJwtSubject, findUserIdByUsername } from "@/lib/api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-
 export default function LoginPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
@@ -132,7 +131,7 @@ export default function LoginPage() {
               className="w-full bg-[#FEE500] text-black hover:bg-[#FEE500]/90 gap-2"
               asChild
           >
-            <a href={`${API_BASE}/oauth2/authorization/kakao`}>
+            <a href="https://54.79.207.190.nip.io/oauth2/authorization/kakao">
               <MessageCircle className="h-5 w-5 fill-black" />
               카카오로 로그인 / 회원가입
             </a>
