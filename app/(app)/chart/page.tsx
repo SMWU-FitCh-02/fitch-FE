@@ -233,7 +233,7 @@ export default function ChartPage() {
 
             {/* 노래방일 때만: 장르 카테고리 칩 (일반 흐름) */}
             {source === "tj" && (
-                <div className="flex justify-between mb-5 px-1">
+                <div className="flex justify-between mb-2 px-1">
                     {displayCategories.map((c) => (
                         <button
                             key={c.value || "all"}
@@ -300,7 +300,7 @@ export default function ChartPage() {
 
             {!loading && !error && chart.length > 0 && (
                 <>
-                    {profile.range && (
+                    {profile.range && source === "tj" && (
                         <p className="text-[9px] text-muted-foreground text-right mb-2 px-1">
                             <span className="text-emerald-400">★</span> 쉬움 · {" "}
                             <span className="text-amber-400">★★</span> 보통 · {" "}
