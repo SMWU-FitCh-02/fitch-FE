@@ -58,25 +58,27 @@ export default function GenrePreferencesPage() {
                 하나 이상 선택해주세요. 취향에 맞는 곡을 찾아드려요.
             </p>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 flex-1 content-center">
-                {displayGenres.map((genre) => {
-                    const on = selected.includes(genre)
-                    return (
-                        <button
-                            key={genre}
-                            type="button"
-                            onClick={() => toggle(genre)}
-                            className={cn(
-                                "aspect-square rounded-[14px] border-2 grid place-items-center text-sm font-semibold transition-colors",
-                                on
-                                    ? "border-primary bg-primary/10 text-foreground"
-                                    : "border-border bg-surface/40 text-muted-foreground"
-                            )}
-                        >
-                            {genre}
-                        </button>
-                    )
-                })}
+            <div className="flex-1 flex flex-col justify-center pb-24">
+                <div className="grid grid-cols-3 gap-3">
+                    {displayGenres.map((genre) => {
+                        const on = selected.includes(genre)
+                        return (
+                            <button
+                                key={genre}
+                                type="button"
+                                onClick={() => toggle(genre)}
+                                className={cn(
+                                    "aspect-square rounded-[14px] border-2 grid place-items-center text-sm font-semibold transition-colors",
+                                    on
+                                        ? "border-primary bg-primary/10 text-foreground"
+                                        : "border-border bg-surface/40 text-muted-foreground"
+                                )}
+                            >
+                                {genre}
+                            </button>
+                        )
+                    })}
+                </div>
             </div>
 
             <div className="fixed inset-x-0 bottom-0 z-30 px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
