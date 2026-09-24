@@ -26,8 +26,7 @@ export default function OnboardingPage() {
   const isLast = step === SLIDES.length - 1
 
   return (
-      <main className="min-h-dvh flex flex-col px-6 pt-12 pb-8">
-        <div className="flex items-center justify-between">
+      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-8">        <div className="flex items-center justify-between">
           <FitchLogo />
         </div>
 
