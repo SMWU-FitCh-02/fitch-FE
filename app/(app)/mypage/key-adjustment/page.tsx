@@ -69,8 +69,9 @@ export default function KeyAdjustmentPage() {
         .slice(0, 20)
   }, [query, allSongs])
 
-  const [adjustedKey, setAdjustedKey] = React.useState<string | null>(null)
+const [adjustedKey, setAdjustedKey] = React.useState<string | null>(null)
 const [originalKey, setOriginalKey] = React.useState<string | null>(null)
+const [description, setDescription] = React.useState<string | null>(null)
 
 React.useEffect(() => {
   if (!selected || !profile.userId) {
@@ -84,6 +85,7 @@ React.useEffect(() => {
       setOffset(res.adjust)
       setOriginalKey(res.originalKey)
       setAdjustedKey(res.adjustedKey)
+      setDescription(res.description)
     })
     .catch(() => {
       if (!cancelled) setOffset(0)
@@ -266,6 +268,9 @@ React.useEffect(() => {
                         {fit <= 1 ? "완벽한 키예요" : fit <= 3 ? "도전해볼 만해요" : "조금 더 조정해보세요"}
                       </Badge>
                     </div>
+                    {description && (
+                      <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+                    )}
                   </div>
                 </div>
               </div>
