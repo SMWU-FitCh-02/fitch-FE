@@ -415,8 +415,11 @@ export function RangeTest({
 
     return (
         <div className="flex flex-col items-center text-center gap-6">
-          <div className="text-xs text-muted-foreground">
-            {isLow ? "단계 1 / 2 · 낮은 음 측정" : "단계 2 / 2 · 높은 음 측정"}
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground font-medium mt-0.5">{isLow ? "낮은 음 측정" : "높은 음 측정"}</div>
+            <p className="mt-2 text-[11px] text-muted-foreground/70">
+              소리가 안 들리면 무음 모드를 해제해주세요
+            </p>
           </div>
 
           <div className="relative h-40 w-40">
@@ -428,7 +431,7 @@ export function RangeTest({
 
           <div className="flex flex-col items-center gap-3 w-full">
             <div className="text-xs text-muted-foreground">
-              {isLow ? "이 음까지 편하게 낼 수 있나요?" : "이 음까지 편하게 올라갈 수 있나요?"}
+              가이드음을 듣고 &lsquo;아~&rsquo; 하고 따라 불러보세요.
             </div>
             <div className="text-2xl font-extrabold text-primary">
               {noteToKorean(currentNote)}
@@ -440,7 +443,7 @@ export function RangeTest({
 
           <div className="w-full space-y-3">
             <p className="text-xs text-muted-foreground">
-              가이드음을 듣고 &lsquo;아~&rsquo; 하고 따라 불러보세요.
+
             </p>
             <Button
                 variant="brand"
