@@ -65,8 +65,7 @@ export default function HomePage() {
     }, [profile.preferredArtists])
 
     return (
-        <main className="px-4 pt-4 pb-6 space-y-6">
-            <header className="flex items-center justify-between px-1">
+        <main className="px-4 pt-1 pb-6 space-y-6">            <header className="flex items-center justify-between px-1">
                 <FitchLogo />
                 <Link
                     href="/mypage"
@@ -145,10 +144,10 @@ export default function HomePage() {
 
             {/* Popular chart — TJ미디어 노래방 인기차트 기준, TOP 100 전체 */}
             <Section
-                title="인기차트"
+                title="노래방 인기차트"
                 subtitle="TJ미디어 노래방 인기차트 기준"
                 icon={<TrendingUp className="h-4 w-4 text-primary" />}
-                href="/tjchart"
+                href="/chart"
             >
                 {popularLoading ? (
                     <div className="py-6 text-center text-xs text-muted-foreground">차트를 불러오는 중...</div>

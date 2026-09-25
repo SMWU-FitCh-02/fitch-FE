@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,6 @@ import { useStore } from "@/lib/store"
 import { api, decodeJwtSubject, findUserIdByUsername } from "@/lib/api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-
 export default function LoginPage() {
   const router = useRouter()
   const { profile, setProfile } = useStore()
@@ -68,8 +67,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col px-6 pt-6 pb-8">
-      <button
+      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">      <button
         type="button"
         onClick={() => router.back()}
         className="self-start h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
@@ -127,11 +125,18 @@ export default function LoginPage() {
         <Separator className="flex-1" />
       </div>
 
-      <div className="mt-6 space-y-3">
-        <Button variant="ghost" size="lg" className="w-full" asChild>
-          <Link href="/signup/terms">회원가입</Link>
-        </Button>
-      </div>
+        <div className="mt-6 space-y-3">
+          <Button
+              size="lg"
+              className="w-full bg-[#FEE500] text-black hover:bg-[#FEE500]/90 gap-2"
+              asChild
+          >
+            <a href="https://54.79.207.190.nip.io/oauth2/authorization/kakao">
+              <MessageCircle className="h-5 w-5 fill-black" />
+              카카오로 로그인 / 회원가입
+            </a>
+          </Button>
+        </div>
 
       <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
         FitCh v0.2 · 노래방을 더 즐겁게

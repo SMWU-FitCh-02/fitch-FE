@@ -126,7 +126,7 @@ export default function RecommendationsPage() {
     }
 
     return (
-        <main className="px-4 pt-4 pb-6">
+        <main className="px-4 pt-1 pb-6">
             <header className="flex items-center justify-between px-1 mb-4">
                 <Link
                     href="/home"
