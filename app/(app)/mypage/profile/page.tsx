@@ -135,6 +135,7 @@ export default function ProfileEditPage() {
       setProfile((p) => ({
         ...p,
         name: updated.nickname || updated.name,
+        nickname: updated.nickname || updated.name,
         avatar,
         profileImage: updated.profileImage ?? null,
         preferredGenres: selectedGenres,

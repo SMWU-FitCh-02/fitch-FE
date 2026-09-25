@@ -21,8 +21,7 @@ export default function SplashPage() {
   }, [profile.loggedIn, router])
 
   return (
-      <main className="min-h-dvh flex flex-col items-center justify-center px-6 -translate-y-16">
-        <img
+      <main className="min-h-dvh flex flex-col items-center justify-center px-6 -translate-y-8">        <img
             src="/logo-icon.png"
             alt="FitCh"
             width={96}
