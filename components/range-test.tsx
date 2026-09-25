@@ -77,6 +77,9 @@ export function RangeTest({
       const Ctx = window.AudioContext || (window as any).webkitAudioContext
       audioCtxRef.current = new Ctx()
     }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume()
+    }
     return audioCtxRef.current
   }
 
@@ -165,6 +168,7 @@ export function RangeTest({
   }, [mode, phase, lowStepIdx, highStepIdx])
 
   function handleStartGuide() {
+    getAudioCtx() // 클릭 이벤트 안에서 바로 호출해야 iOS에서 오디오가 풀려요
     setMode("guide")
     setLowStepIdx(LOW_START_INDEX)
     setPhase("low")
