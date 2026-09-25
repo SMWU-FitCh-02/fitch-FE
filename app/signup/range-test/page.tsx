@@ -13,9 +13,6 @@ export default function SignupRangeTestPage() {
       <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+3rem)]">      <SignupHeader step={4} total={4} />
       <div>
         <h1 className="text-2xl font-extrabold">음역대 테스트</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          마지막 단계예요! 짧은 녹음으로 음역대를 측정해요.
-        </p>
       </div>
       <div className="mt-6 flex-1">
         <RangeTest
