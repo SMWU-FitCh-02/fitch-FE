@@ -87,9 +87,9 @@ body {
 /* App background gradient for karaoke vibe */
 .bg-app-gradient {
   background:
-    radial-gradient(1200px 600px at 20% -10%, rgba(123, 140, 255, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(157, 140, 255, 0.12), transparent 60%),
-    linear-gradient(180deg, #0a1024 0%, #080d24 100%);
+          radial-gradient(1200px 400px at 20% -20%, rgba(123, 140, 255, 0.18), transparent 60%),
+          radial-gradient(900px 350px at 90% -5%, rgba(157, 140, 255, 0.12), transparent 60%),
+          linear-gradient(180deg, #0a1024 0%, #080d24 100%);
 }
 
 .glow-primary {
