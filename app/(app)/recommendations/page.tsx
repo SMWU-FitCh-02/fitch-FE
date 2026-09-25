@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import {ArrowLeft, Sparkles, Search, X, Loader2, Wand2} from "lucide-react"
+import {Sparkles, Search, X, Loader2, Wand2} from "lucide-react"
 import {useStore} from "@/lib/store"
 import {api} from "@/lib/api"
 import {fetchTjChartWithRange, type ChartEntryWithRange} from "@/lib/tjchart"
@@ -126,20 +126,14 @@ export default function RecommendationsPage() {
     }
 
     return (
-        <main className="px-4 pt-1 pb-6">
-            <header className="flex items-center justify-between px-1 mb-4">
-                <Link
-                    href="/home"
-                    className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
-                >
-                    <ArrowLeft className="h-5 w-5"/>
-                </Link>
+        <main className="px-4 pt-0 pb-6">
+            <header className="flex items-center justify-between px-1 mb-3">                <div className="h-10 w-10"/>
                 <h1 className="text-base font-bold">추천곡</h1>
                 <div className="h-10 w-10"/>
             </header>
 
             {/* AI 자연어 검색 */}
-            <form onSubmit={handleSearch} className="mb-4">
+            <form onSubmit={handleSearch} className="mb-3">
                 <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
@@ -203,7 +197,7 @@ export default function RecommendationsPage() {
             )}
 
             {!searchResults && (
-                <div className="flex items-center gap-2 text-primary mb-5">
+                <div className="flex items-center gap-2 text-primary mb-4">
                     <Sparkles className="h-4 w-4"/>
                     <span className="text-sm font-bold">
   {profile.nickname ? `${profile.nickname}님 ` : ""}음역대 맞춤 추천곡
@@ -220,7 +214,7 @@ export default function RecommendationsPage() {
             )}
 
             {!searchResults && hasRange && (
-                <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-4 gap-2 mb-3">
                     <button onClick={() => setTierFilter("all")} className={chipClass(tierFilter === "all")}>
                         전체
                     </button>

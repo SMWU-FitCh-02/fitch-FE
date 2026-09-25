@@ -13,7 +13,6 @@ const ALL_TERMS = [
     { key: "service", label: "FitCh 서비스 이용약관 동의", required: true, body: "FitCh이 제공하는 음역대 분석, 추천 기능 등에 관한 이용 조건과 절차에 동의합니다." },
     { key: "privacy", label: "개인정보 수집·이용 동의", required: true, body: "이름, 이메일, 음역대 데이터 등 서비스 제공을 위해 수집하는 개인정보 항목·이용 목적·보관 기간에 동의합니다." },
     { key: "voice", label: "음성 데이터 처리 동의", required: true, body: "분석을 위한 짧은 녹음 파일을 안전하게 처리하며, 식별 정보와 분리해 보관함에 동의합니다." },
-    { key: "marketing", label: "마케팅 정보 수신 동의", required: false, body: "신규 기능, 이벤트, 추천 노래 알림을 이메일로 받을 수 있습니다. 언제든 끌 수 있어요." },
 ]
 
 export default function TermsPage() {
@@ -34,7 +33,7 @@ export default function TermsPage() {
 
     return (
         <main className="min-h-dvh flex flex-col px-6 pb-32">
-            <SignupHeader step={1} total={5} />
+            <SignupHeader step={1} total={4} />
             <div>
                 <h1 className="text-2xl font-extrabold">시작 전에 잠깐!</h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">

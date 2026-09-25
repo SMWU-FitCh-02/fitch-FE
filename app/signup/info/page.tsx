@@ -107,7 +107,7 @@ export default function InfoPage() {
 
   return (
       <main className="min-h-dvh flex flex-col px-6 pb-32">
-        <SignupHeader step={2} total={5} />
+        <SignupHeader step={2} total={4} />
         <h1 className="text-2xl font-extrabold">정보를 입력해주세요</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">맞춤 추천을 위한 기본 정보예요.</p>
 

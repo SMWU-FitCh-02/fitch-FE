@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, MessageCircle } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -67,15 +67,7 @@ export default function LoginPage() {
   }
 
   return (
-      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">      <button
-        type="button"
-        onClick={() => router.back()}
-        className="self-start h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
-        aria-label="뒤로"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
-
+      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">
       <div className="mt-6">
         <FitchLogo />
       </div>
@@ -138,8 +130,16 @@ export default function LoginPage() {
           </Button>
         </div>
 
+        <div className="mt-4 text-center">
+          <Link href="/signup/terms" className="text-sm text-muted-foreground underline underline-offset-4">
+            회원가입
+          </Link>
+        </div>
+
+
+
       <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
-        FitCh v0.2 · 노래방을 더 즐겁게
+        FitCh v0.2 · 노래방을 더 편리하게
       </div>
     </main>
   )
