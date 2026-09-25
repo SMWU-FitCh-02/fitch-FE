@@ -87,8 +87,12 @@ export default function KeyAdjustmentPage() {
           setAdjustedKey(res.adjustedKey)
           setDescription(res.description)
         })
-        .catch(() => {
-          if (!cancelled) setOffset(0)
+        .catch((err) => {
+          console.error("키 조정 계산 실패:", err)
+          if (!cancelled) {
+            setOffset(0)
+            setDescription("키 조정 계산에 실패했어요. 이 곡의 음역대 데이터를 확인해주세요.")
+          }
         })
     return () => { cancelled = true }
   }, [selected, profile.userId])
