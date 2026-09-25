@@ -34,7 +34,7 @@ export default function TermsPage() {
 
     return (
         <main className="min-h-dvh flex flex-col px-6 pb-32">
-            <SignupHeader step={1} total={5} />
+            <SignupHeader step={1} total={4} />
             <div>
                 <h1 className="text-2xl font-extrabold">시작 전에 잠깐!</h1>
                 <p className="mt-1.5 text-sm text-muted-foreground">

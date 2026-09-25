@@ -10,7 +10,7 @@ export default function SignupRangeTestPage() {
   const { profile, setProfile } = useStore()
 
   return (
-      <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+3rem)]">      <SignupHeader step={5} total={5} />
+      <main className="min-h-dvh flex flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+3rem)]">      <SignupHeader step={4} total={4} />
       <div>
         <h1 className="text-2xl font-extrabold">음역대 테스트</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">

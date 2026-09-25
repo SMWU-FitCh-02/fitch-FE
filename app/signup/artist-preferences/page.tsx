@@ -52,7 +52,7 @@ export default function GenrePreferencesPage() {
 
     return (
         <main className="min-h-dvh flex flex-col px-6 pb-32">
-            <SignupHeader step={4} total={5} />
+            <SignupHeader step={3} total={4} />
             <h1 className="text-2xl font-extrabold">좋아하는 장르</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
                 하나 이상 선택해주세요. 취향에 맞는 곡을 찾아드려요.
