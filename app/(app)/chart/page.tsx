@@ -302,8 +302,9 @@ export default function ChartPage() {
                 <>
                     {profile.range && source === "tj" && (
                         <p className="text-[9px] text-muted-foreground text-right mb-2 px-1">
-                            <span className="text-emerald-400">★</span> 쉬움 · {" "}
-                            <span className="text-amber-400">★★</span> 보통 · {" "}
+                            <span className="text-primary font-semibold">내 음역대 기준</span>  {" "}
+                            <span className="text-emerald-400">★</span> 쉬움  {" "}
+                            <span className="text-amber-400">★★</span> 보통  {" "}
                             <span className="text-rose-400">★★★</span> 고난이도
                         </p>
                     )}

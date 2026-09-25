@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, MessageCircle } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -67,15 +67,7 @@ export default function LoginPage() {
   }
 
   return (
-      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">      <button
-        type="button"
-        onClick={() => router.back()}
-        className="self-start h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
-        aria-label="뒤로"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
-
+      <main className="min-h-dvh flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8">
       <div className="mt-6">
         <FitchLogo />
       </div>
