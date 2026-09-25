@@ -130,6 +130,14 @@ export default function LoginPage() {
           </Button>
         </div>
 
+        <div className="text-center">
+          <Link href="/signup" className="text-sm text-muted-foreground underline underline-offset-4">
+            회원가입
+          </Link>
+        </div>
+
+
+
       <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
         FitCh v0.2 · 노래방을 더 즐겁게
       </div>
