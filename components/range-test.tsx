@@ -10,17 +10,35 @@ import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { noteToKorean } from "@/lib/songs"
 
-type Phase = "intro" | "low" | "high" | "comfortable" | "analyzing" | "done"
+type Phase = "intro" | "low" | "high" | "analyzing" | "done"
+type Mode = "guide" | "classic"
 
 // Note ladder going up
 const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3"]
 const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
+
+// 낮은 음 테스트는 편한 음(C3)에서 시작해서 점점 내려간다
+const LOW_LADDER_DESC = [...LOW_LADDER].reverse()
+const LOW_START_INDEX = LOW_LADDER_DESC.indexOf("C3")
+// 높은 음 테스트는 편한 음(C4)에서 시작해서 점점 올라간다
+const HIGH_START_INDEX = HIGH_LADDER.indexOf("C4")
 
 function shiftDownInHighLadder(note: string, steps: number) {
   const i = HIGH_LADDER.indexOf(note)
   if (i === -1) return note
   return HIGH_LADDER[Math.max(0, i - steps)]
 }
+
+// 가이드 모드: 현재 인덱스로부터 "지금까지 성공한 마지막 음"을 역산
+function lowestFromIndex(idx: number) {
+  return idx > LOW_START_INDEX ? LOW_LADDER_DESC[idx - 1] : LOW_LADDER_DESC[LOW_START_INDEX]
+}
+function highestFromIndex(idx: number) {
+  return idx > HIGH_START_INDEX ? HIGH_LADDER[idx - 1] : HIGH_LADDER[HIGH_START_INDEX]
+}
+
+const PIANO_SAMPLE_BASE =
+    "https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/acoustic_grand_piano-mp3"
 
 export function RangeTest({
                             onComplete,
@@ -32,18 +50,75 @@ export function RangeTest({
   userId?: number
 }) {
 
+  const [mode, setMode] = React.useState<Mode | null>(null)
   const [phase, setPhase] = React.useState<Phase>(initialPhase)
-  const [recording, setRecording] = React.useState(false)
-  const [progress, setProgress] = React.useState(0)
-  const [lowIdx, setLowIdx] = React.useState(0)
-  const [highIdx, setHighIdx] = React.useState(0)
   const [result, setResult] = React.useState<RangeRecord | null>(null)
   const [micNotice, setMicNotice] = React.useState("")
+
+  // 가이드 모드 전용
+  const [lowStepIdx, setLowStepIdx] = React.useState(LOW_START_INDEX)
+  const [highStepIdx, setHighStepIdx] = React.useState(HIGH_START_INDEX)
+
+  // 직접 녹음(기존) 모드 전용
+  const [recording, setRecording] = React.useState(false)
+  const [progress, setProgress] = React.useState(0)
+  const [classicLowIdx, setClassicLowIdx] = React.useState(0)
+  const [classicHighIdx, setClassicHighIdx] = React.useState(0)
 
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null)
   const streamRef = React.useRef<MediaStream | null>(null)
   const chunksRef = React.useRef<Blob[]>([])
   const recordedBlobRef = React.useRef<Blob | null>(null)
+  const audioCtxRef = React.useRef<AudioContext | null>(null)
+  const pianoBufferCacheRef = React.useRef<Map<string, AudioBuffer>>(new Map())
+
+  function getAudioCtx() {
+    if (!audioCtxRef.current) {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext
+      audioCtxRef.current = new Ctx()
+    }
+    return audioCtxRef.current
+  }
+
+  async function loadPianoBuffer(note: string): Promise<AudioBuffer | null> {
+    const cache = pianoBufferCacheRef.current
+    if (cache.has(note)) return cache.get(note)!
+    try {
+      const res = await fetch(`${PIANO_SAMPLE_BASE}/${note}.mp3`)
+      if (!res.ok) return null
+      const arrayBuffer = await res.arrayBuffer()
+      const ctx = getAudioCtx()
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+      cache.set(note, audioBuffer)
+      return audioBuffer
+    } catch {
+      return null
+    }
+  }
+
+  async function playGuideTone(note: string, duration = 3000) {
+    try {
+      const ctx = getAudioCtx()
+      const buffer = await loadPianoBuffer(note)
+      if (!buffer) return
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      const gain = ctx.createGain()
+      const now = ctx.currentTime
+      const dur = duration / 1000
+
+      gain.gain.setValueAtTime(0.9, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur - 0.03)
+      gain.gain.linearRampToValueAtTime(0, now + dur)
+
+      source.connect(gain)
+      gain.connect(ctx.destination)
+      source.start(now)
+      source.stop(now + dur)
+    } catch {
+      // 오디오 재생 실패는 조용히 무시
+    }
+  }
 
   async function startRealRecording() {
     if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
@@ -55,7 +130,7 @@ export function RangeTest({
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
       }
-      mr.start(1000)   // ← 1초마다 청크 생성
+      mr.start(1000)
       mediaRecorderRef.current = mr
     } catch {
       setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
@@ -78,9 +153,71 @@ export function RangeTest({
     })
   }
 
-  // 진행바가 다 차면(=3초 녹음 완료) 녹음만 멈추고, 다음 행동은 버튼으로 선택하게 함
+  // ---- 가이드 모드 (녹음 사용 안 함) ----
+
+  // 낮은 음/높은 음 단계에 들어갈 때 + 음이 바뀔 때마다 가이드음 자동 재생
   React.useEffect(() => {
-    if (!recording) return
+    if (mode !== "guide") return
+    if (phase !== "low" && phase !== "high") return
+    const note = phase === "low" ? LOW_LADDER_DESC[lowStepIdx] : HIGH_LADDER[highStepIdx]
+    playGuideTone(note)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, phase, lowStepIdx, highStepIdx])
+
+  function handleStartGuide() {
+    setMode("guide")
+    setLowStepIdx(LOW_START_INDEX)
+    setPhase("low")
+  }
+
+  function goToHighPhaseGuide() {
+    setHighStepIdx(HIGH_START_INDEX)
+    setPhase("high")
+  }
+
+  function handleLowSuccess() {
+    if (lowStepIdx >= LOW_LADDER_DESC.length - 1) {
+      goToHighPhaseGuide()
+    } else {
+      setLowStepIdx((i) => i + 1)
+    }
+  }
+
+  function handleLowFail() {
+    goToHighPhaseGuide()
+  }
+
+  function handleLowPrev() {
+    setLowStepIdx((i) => Math.max(LOW_START_INDEX, i - 1))
+  }
+
+  function handleHighSuccess() {
+    if (highStepIdx >= HIGH_LADDER.length - 1) {
+      setPhase("analyzing")
+    } else {
+      setHighStepIdx((i) => i + 1)
+    }
+  }
+
+  function handleHighFail() {
+    setPhase("analyzing")
+  }
+
+  function handleHighPrev() {
+    setHighStepIdx((i) => Math.max(HIGH_START_INDEX, i - 1))
+  }
+
+  // ---- 직접 녹음(기존) 모드 (녹음 + 서버 분석 사용) ----
+
+  async function startClassicStep(p: "low" | "high") {
+    setMode("classic")
+    setPhase(p)
+    setRecording(true)
+    if (p === "low") await startRealRecording()
+  }
+
+  React.useEffect(() => {
+    if (mode !== "classic" || !recording) return
     setProgress(0)
     const interval = setInterval(() => {
       setProgress((p) => {
@@ -89,23 +226,23 @@ export function RangeTest({
           clearInterval(interval)
           setRecording(false)
           if (phase === "low") {
-            setLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
+            setClassicLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
           } else if (phase === "high") {
-            setHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
+            setClassicHighIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
           }
         }
         return next
       })
     }, 60)
     return () => clearInterval(interval)
-  }, [recording, phase])
+  }, [recording, phase, mode])
 
-  function handleRetry() {
+  function handleClassicRetry() {
     setProgress(0)
     setRecording(true)
   }
 
-  async function handleAdvance() {
+  async function handleClassicAdvance() {
     if (phase === "low") {
       setPhase("high")
       setProgress(0)
@@ -117,19 +254,28 @@ export function RangeTest({
     }
   }
 
-  // when phase = analyzing, try the real backend first, fall back to a simulated result
+  // phase = analyzing: '직접 녹음' 모드에서만 서버 분석 시도, 실패/가이드모드는 직접 측정한 결과 사용
   React.useEffect(() => {
     if (phase !== "analyzing") return
     let cancelled = false
 
     async function run() {
-      const lowest = LOW_LADDER[Math.max(0, lowIdx - 1)]
-      const highest = HIGH_LADDER[Math.min(HIGH_LADDER.length - 1, highIdx + 1)]
-      const comfortable = HIGH_LADDER[Math.max(0, highIdx - 2)]
+      let lowest: string
+      let highest: string
+
+      if (mode === "guide") {
+        lowest = lowestFromIndex(lowStepIdx)
+        highest = highestFromIndex(highStepIdx)
+      } else {
+        lowest = LOW_LADDER[Math.max(0, classicLowIdx - 1)]
+        highest = HIGH_LADDER[Math.min(HIGH_LADDER.length - 1, classicHighIdx + 1)]
+      }
+      const comfortable = shiftDownInHighLadder(highest, 2)
       const tones = ["bright", "warm", "husky", "soft"] as const
       let rec: RangeRecord | null = null
 
-      if (userId && recordedBlobRef.current && recordedBlobRef.current.size > 0) {
+      // 서버 분석은 '직접 녹음' 모드에서만 시도한다
+      if (mode === "classic" && userId && recordedBlobRef.current && recordedBlobRef.current.size > 0) {
         try {
           const res = await api.uploadVoice(userId, recordedBlobRef.current, "range-test.webm")
           rec = {
@@ -140,12 +286,12 @@ export function RangeTest({
             voiceTone: tones[Math.floor(Math.random() * tones.length)],
           }
         } catch {
-          setMicNotice("서버 분석에 실패해 시뮬레이션 결과로 대신했어요.")
+          setMicNotice("서버 분석에 실패해 직접 측정한 결과로 대신했어요.")
         }
       }
 
       if (!rec) {
-        await new Promise((r) => setTimeout(r, 1400))
+        await new Promise((r) => setTimeout(r, 1000))
         rec = {
           testedAt: new Date().toISOString(),
           lowestNote: lowest,
@@ -162,15 +308,18 @@ export function RangeTest({
     }
 
     run()
-    return () => {
-      cancelled = true
-    }
-  }, [phase, lowIdx, highIdx, userId])
+    return () => { cancelled = true }
+  }, [phase, mode, lowStepIdx, highStepIdx, classicLowIdx, classicHighIdx, userId])
 
-  async function startStep(p: "low" | "high") {
-    setPhase(p)
-    setRecording(true)
-    if (p === "low") await startRealRecording()
+  function resetAll() {
+    setMode(null)
+    setPhase("intro")
+    setLowStepIdx(LOW_START_INDEX)
+    setHighStepIdx(HIGH_START_INDEX)
+    setClassicLowIdx(0)
+    setClassicHighIdx(0)
+    setProgress(0)
+    setRecording(false)
   }
 
   React.useEffect(() => {
@@ -191,30 +340,126 @@ export function RangeTest({
           <div>
             <h2 className="text-xl font-extrabold">3분 음역대 테스트</h2>
             <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-              낮은 소리에서 점점 높이 올려보세요. AI가 당신의 음역대를 분석합니다.
+              측정 방식을 선택해주세요.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3 w-full text-center text-xs">
+          <div className="flex items-center justify-center gap-7 w-full">
             {[
-              { i: "1️⃣", t: "낮은 음", d: "‘아~’ 천천히" },
-              { i: "2️⃣", t: "높은 음", d: "점점 더 높게" },
-              { i: "3️⃣", t: "분석", d: "AI 결과" },
-            ].map((step) => (
-                <div key={step.t} className="rounded-[12px] bg-surface/60 border border-border/60 p-3">
-                  <div className="text-xl">{step.i}</div>
-                  <div className="mt-1 text-sm font-semibold">{step.t}</div>
-                  <div className="text-[10px] text-muted-foreground">{step.d}</div>
-                </div>
+              { i: "1", t: "낮은 음" },
+              { i: "2", t: "높은 음" },
+              { i: "3", t: "분석" },
+            ].map((step, idx, arr) => (
+                <React.Fragment key={step.t}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="h-10 w-10 grid place-items-center rounded-[10px] bg-primary/30 text-primary text-base font-bold">
+                      {step.i}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground">{step.t}</div>
+                  </div>
+                  {idx < arr.length - 1 && (
+                      <span className="text-primary/60 text-xl mb-6">→</span>
+                  )}
+                </React.Fragment>
             ))}
           </div>
-          <Button variant="brand" size="lg" className="w-full" onClick={() => startStep("low")}>
-            시작하기 <Mic className="h-5 w-5" />
-          </Button>
+          <div className="grid grid-cols-2 gap-4 w-full">
+            <button
+                type="button"
+                onClick={handleStartGuide}
+                className="flex flex-col items-center gap-2 rounded-[16px] bg-gradient-to-b from-primary/15 via-primary/5 to-transparent py-5 px-3 hover:from-primary/20 transition-colors"
+            >
+              <div className="h-10 w-10 grid place-items-center rounded-full bg-primary/15 text-primary">
+                <Music2 className="h-5 w-5" />
+              </div>
+              <div className="text-sm font-bold">가이드 음</div>
+              <div className="text-[11px] text-muted-foreground leading-snug">
+                음을 듣고 따라 부르며 측정
+              </div>
+            </button>
+
+            <button
+                type="button"
+                onClick={() => startClassicStep("low")}
+                className="flex flex-col items-center gap-2 rounded-[16px] bg-gradient-to-b from-brand/15 via-brand/5 to-transparent py-5 px-3 hover:from-brand/20 transition-colors"
+            >
+              <div className="h-10 w-10 grid place-items-center rounded-full bg-brand/15 text-brand">
+                <Mic className="h-5 w-5" />
+              </div>
+              <div className="text-sm font-bold">직접 녹음</div>
+              <div className="text-[11px] text-muted-foreground leading-snug">
+                편하게 소리 내며 측정
+              </div>
+            </button>
+          </div>
         </div>
     )
   }
 
-  if (phase === "low" || phase === "high") {
+  if ((phase === "low" || phase === "high") && mode === "guide") {
+    const isLow = phase === "low"
+    const currentNote = isLow ? LOW_LADDER_DESC[lowStepIdx] : HIGH_LADDER[highStepIdx]
+    const atStart = isLow ? lowStepIdx <= LOW_START_INDEX : highStepIdx <= HIGH_START_INDEX
+
+    return (
+        <div className="flex flex-col items-center text-center gap-6">
+          <div className="text-xs text-muted-foreground">
+            {isLow ? "단계 1 / 2 · 낮은 음 측정" : "단계 2 / 2 · 높은 음 측정"}
+          </div>
+
+          <div className="relative h-40 w-40">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-brand opacity-25 blur-2xl animate-pulse" />
+            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary to-brand grid place-items-center">
+              <Music2 className="h-12 w-12 text-white" />
+            </div>
+          </div>
+
+          <div className="rounded-[14px] bg-surface-elevated/70 border border-border/60 p-5 w-full">
+            <div className="text-xs text-muted-foreground mb-1">
+              {isLow ? "이 음까지 편하게 낼 수 있나요?" : "이 음까지 편하게 올라갈 수 있나요?"}
+            </div>
+            <div className="text-3xl font-extrabold text-primary mb-3">
+              {noteToKorean(currentNote)}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => playGuideTone(currentNote)}>
+              <Music2 className="h-4 w-4" /> 가이드음 다시 듣기
+            </Button>
+          </div>
+
+          <div className="w-full space-y-3">
+            <p className="text-xs text-muted-foreground">
+              가이드음을 듣고 &lsquo;아~&rsquo; 하고 따라 불러보세요.
+            </p>
+            <Button
+                variant="brand"
+                size="lg"
+                className="w-full"
+                onClick={isLow ? handleLowSuccess : handleHighSuccess}
+            >
+              냈어요! 다음 음으로 {isLow ? "⬇️" : "⬆️"}
+            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={isLow ? handleLowPrev : handleHighPrev}
+                  disabled={atStart}
+              >
+                ← 이전 음
+              </Button>
+              <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={isLow ? handleLowFail : handleHighFail}
+              >
+                여기까지가 한계예요
+              </Button>
+            </div>
+          </div>
+        </div>
+    )
+  }
+
+  if ((phase === "low" || phase === "high") && mode === "classic") {
     return (
         <div className="flex flex-col items-center text-center gap-6">
           <div className="text-xs text-muted-foreground">
@@ -271,10 +516,10 @@ export function RangeTest({
                   <p className="text-xs font-semibold text-primary">
                     {phase === "low" ? "낮은 음 녹음 완료!" : "높은 음 녹음 완료!"}
                   </p>
-                  <Button variant="outline" size="lg" className="w-full" onClick={handleRetry}>
+                  <Button variant="outline" size="lg" className="w-full" onClick={handleClassicRetry}>
                     <RotateCcw className="h-4 w-4" /> 다시 녹음하기
                   </Button>
-                  <Button variant="brand" size="lg" className="w-full" onClick={handleAdvance}>
+                  <Button variant="brand" size="lg" className="w-full" onClick={handleClassicAdvance}>
                     {phase === "low" ? "높은 음 녹음하러 가기" : "분석 시작하기"}
                   </Button>
                 </>
@@ -294,7 +539,9 @@ export function RangeTest({
             </div>
           </div>
           <div>
-            <div className="text-lg font-bold">AI가 당신의 목소리를 분석 중</div>
+            <div className="text-lg font-bold">
+              {mode === "classic" ? "AI가 당신의 목소리를 분석 중" : "결과를 정리하는 중"}
+            </div>
             <div className="mt-1 text-xs text-muted-foreground">잠시만 기다려주세요...</div>
           </div>
         </div>
@@ -323,7 +570,8 @@ export function RangeTest({
             </div>
             <div>
               <div className="text-[10px] text-muted-foreground">최고음</div>
-              <div className="text-lg font-extrabold text-brand">{result?.highestNote && noteToKorean(result.highestNote)}</div>            </div>
+              <div className="text-lg font-extrabold text-brand">{result?.highestNote && noteToKorean(result.highestNote)}</div>
+            </div>
           </div>
         </div>
         <div className="rounded-[12px] bg-surface/70 border border-border/60 p-4 w-full text-left">
@@ -332,7 +580,8 @@ export function RangeTest({
             <div>
               <div className="text-sm font-semibold">이 음역대로 부르기 좋은 노래</div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {result?.highestNote && noteToKorean(result.highestNote)} 안팎의 곡들을 추천해드릴게요.              </div>
+                {result?.highestNote && noteToKorean(result.highestNote)} 안팎의 곡들을 추천해드릴게요.
+              </div>
             </div>
           </div>
         </div>
@@ -346,21 +595,10 @@ export function RangeTest({
           >
             결과 저장하고 시작하기
           </Button>
-          <Button
-              variant="ghost"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                setPhase("intro")
-                setLowIdx(0)
-                setHighIdx(0)
-                setProgress(0)
-              }}
-          >
+          <Button variant="ghost" size="lg" className="w-full" onClick={resetAll}>
             <RotateCcw className="h-4 w-4" /> 다시 측정
           </Button>
         </div>
       </div>
   )
-
 }
