@@ -131,7 +131,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 text-center">
-          <Link href="/signup" className="text-sm text-muted-foreground underline underline-offset-4">
+          <Link href="/signup/terms" className="text-sm text-muted-foreground underline underline-offset-4">
             회원가입
           </Link>
         </div>
@@ -139,7 +139,7 @@ export default function LoginPage() {
 
 
       <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
-        FitCh v0.2 · 노래방을 더 즐겁게
+        FitCh v0.2 · 노래방을 더 편리하게
       </div>
     </main>
   )
