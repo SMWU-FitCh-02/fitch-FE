@@ -14,12 +14,12 @@ type Phase = "intro" | "low" | "high" | "analyzing" | "done"
 type Mode = "guide" | "classic"
 
 // Note ladder going up
-const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3"]
+const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"]
 const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
 
 // 낮은 음 테스트는 편한 음(C3)에서 시작해서 점점 내려간다
 const LOW_LADDER_DESC = [...LOW_LADDER].reverse()
-const LOW_START_INDEX = LOW_LADDER_DESC.indexOf("C3")
+const LOW_START_INDEX = LOW_LADDER_DESC.indexOf("C4")
 // 높은 음 테스트는 편한 음(C4)에서 시작해서 점점 올라간다
 const HIGH_START_INDEX = HIGH_LADDER.indexOf("C4")
 
@@ -184,11 +184,7 @@ export function RangeTest({
 
   function handleLowSuccess() {
     getAudioCtx()
-    if (lowStepIdx >= LOW_LADDER_DESC.length - 1) {
-      goToHighPhaseGuide()
-    } else {
-      setLowStepIdx((i) => i + 1)
-    }
+    setLowStepIdx((i) => Math.min(LOW_LADDER_DESC.length - 1, i + 1))
   }
 
   function handleLowFail() {
@@ -203,11 +199,7 @@ export function RangeTest({
 
   function handleHighSuccess() {
     getAudioCtx()
-    if (highStepIdx >= HIGH_LADDER.length - 1) {
-      setPhase("analyzing")
-    } else {
-      setHighStepIdx((i) => i + 1)
-    }
+    setHighStepIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))
   }
 
   function handleHighFail() {
@@ -412,6 +404,7 @@ export function RangeTest({
     const isLow = phase === "low"
     const currentNote = isLow ? LOW_LADDER_DESC[lowStepIdx] : HIGH_LADDER[highStepIdx]
     const atStart = isLow ? lowStepIdx <= LOW_START_INDEX : highStepIdx <= HIGH_START_INDEX
+    const atEnd = isLow ? lowStepIdx >= LOW_LADDER_DESC.length - 1 : highStepIdx >= HIGH_LADDER.length - 1
 
     return (
         <div className="flex flex-col items-center text-center gap-6">
@@ -450,6 +443,7 @@ export function RangeTest({
                 size="lg"
                 className="w-full"
                 onClick={isLow ? handleLowSuccess : handleHighSuccess}
+                disabled={atEnd}
             >
               냈어요! 다음 음으로 {isLow ? "⬇️" : "⬆️"}
             </Button>
