@@ -130,7 +130,7 @@ export default function LoginPage() {
           </Button>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-4 text-center">
           <Link href="/signup" className="text-sm text-muted-foreground underline underline-offset-4">
             회원가입
           </Link>
