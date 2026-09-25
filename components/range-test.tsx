@@ -102,6 +102,9 @@ export function RangeTest({
   async function playGuideTone(note: string, duration = 3000) {
     try {
       const ctx = getAudioCtx()
+      if (ctx.state === "suspended") {
+        await ctx.resume()
+      }
       const buffer = await loadPianoBuffer(note)
       if (!buffer) return
       const source = ctx.createBufferSource()
@@ -180,6 +183,7 @@ export function RangeTest({
   }
 
   function handleLowSuccess() {
+    getAudioCtx()
     if (lowStepIdx >= LOW_LADDER_DESC.length - 1) {
       goToHighPhaseGuide()
     } else {
@@ -188,14 +192,17 @@ export function RangeTest({
   }
 
   function handleLowFail() {
+    getAudioCtx()
     goToHighPhaseGuide()
   }
 
   function handleLowPrev() {
+    getAudioCtx()
     setLowStepIdx((i) => Math.max(LOW_START_INDEX, i - 1))
   }
 
   function handleHighSuccess() {
+    getAudioCtx()
     if (highStepIdx >= HIGH_LADDER.length - 1) {
       setPhase("analyzing")
     } else {
@@ -204,10 +211,12 @@ export function RangeTest({
   }
 
   function handleHighFail() {
+    getAudioCtx()
     setPhase("analyzing")
   }
 
   function handleHighPrev() {
+    getAudioCtx()
     setHighStepIdx((i) => Math.max(HIGH_START_INDEX, i - 1))
   }
 
@@ -417,11 +426,11 @@ export function RangeTest({
             </div>
           </div>
 
-          <div className="rounded-[14px] bg-surface-elevated/70 border border-border/60 p-5 w-full">
-            <div className="text-xs text-muted-foreground mb-1">
+          <div className="flex flex-col items-center gap-3 w-full">
+            <div className="text-xs text-muted-foreground">
               {isLow ? "이 음까지 편하게 낼 수 있나요?" : "이 음까지 편하게 올라갈 수 있나요?"}
             </div>
-            <div className="text-3xl font-extrabold text-primary mb-3">
+            <div className="text-2xl font-extrabold text-primary">
               {noteToKorean(currentNote)}
             </div>
             <Button variant="outline" size="sm" onClick={() => playGuideTone(currentNote)}>
