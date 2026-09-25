@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import {ArrowLeft, Sparkles, Search, X, Loader2, Wand2} from "lucide-react"
+import {Sparkles, Search, X, Loader2, Wand2} from "lucide-react"
 import {useStore} from "@/lib/store"
 import {api} from "@/lib/api"
 import {fetchTjChartWithRange, type ChartEntryWithRange} from "@/lib/tjchart"
@@ -128,12 +128,7 @@ export default function RecommendationsPage() {
     return (
         <main className="px-4 pt-1 pb-6">
             <header className="flex items-center justify-between px-1 mb-4">
-                <Link
-                    href="/home"
-                    className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
-                >
-                    <ArrowLeft className="h-5 w-5"/>
-                </Link>
+                <div className="h-10 w-10"/>
                 <h1 className="text-base font-bold">추천곡</h1>
                 <div className="h-10 w-10"/>
             </header>
