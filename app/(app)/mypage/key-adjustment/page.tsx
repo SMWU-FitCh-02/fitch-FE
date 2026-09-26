@@ -12,6 +12,7 @@ import { api, type SongResponse } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { colorFromString } from "@/lib/song-display"
 import { noteToKorean } from "@/lib/songs"
+import { matchesSearch } from "@/lib/artist-aliases"
 
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 function midiToNote(midi: number): string {
@@ -61,13 +62,13 @@ export default function KeyAdjustmentPage() {
     }
   }, [hasRange, profile.userId])
 
-  const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return allSongs.slice(0, 10)
-    return allSongs
-        .filter((s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q))
-        .slice(0, 20)
-  }, [query, allSongs])
+    // filtered 부분 교체
+    const filtered = React.useMemo(() => {
+        if (!query.trim()) return allSongs.slice(0, 10)
+        return allSongs
+            .filter((s) => matchesSearch(query, s.title, s.artist))
+            .slice(0, 20)
+    }, [query, allSongs])
 
   const [adjustedKey, setAdjustedKey] = React.useState<string | null>(null)
   const [originalKey, setOriginalKey] = React.useState<string | null>(null)
