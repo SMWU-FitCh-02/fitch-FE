@@ -145,6 +145,13 @@ export const api = {
       body: JSON.stringify(songs),
     })
   },
+  saveVocalRange(userId: number, minNote: number, maxNote: number) {
+    return request(`/user/${userId}/vocal-range`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minNote, maxNote }),
+    })
+  },
   // AI 자연어 검색: candidates 중에서 query에 어울리는 곡들의 인덱스를 돌려받음
   searchRecommend(
       query: string,
