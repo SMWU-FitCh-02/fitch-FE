@@ -33,13 +33,46 @@ async function searchOnce(term: string, country?: string) {
   const res = await fetch(url.toString(), {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
     },
     next: { revalidate: 86400 },
   })
   if (!res.ok) return null
   const data = await res.json()
   return data?.results?.[0] ?? null
+}
+
+// "응급실(쾌걸춘향OST)", "천상연(웹툰 '선녀외전' X 이창섭(LEE CHANGSUB))" 처럼
+// 괄호 안에 OST/드라마명/콜라보 표기가 붙어있으면 iTunes 검색이 실패하기 쉬워서,
+// 괄호(전각/반각 둘 다) 부분을 제거한 제목으로 한 번 더 시도한다.
+function cleanTitle(title: string): string {
+  return title
+      .replace(/[（(][^）)]*[）)]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+}
+
+async function searchWithFallbacks(title: string, artist: string) {
+  const term = `${artist} ${title}`.trim()
+  let result = await searchOnce(term, "KR")
+  if (result) return result
+  result = await searchOnce(term)
+  if (result) return result
+
+  const cleaned = cleanTitle(title)
+  if (cleaned && cleaned !== title) {
+    const cleanTerm = `${artist} ${cleaned}`.trim()
+    result = await searchOnce(cleanTerm, "KR")
+    if (result) return result
+    result = await searchOnce(cleanTerm)
+    if (result) return result
+  }
+
+  // 아티스트명까지 포함해서 실패하는 경우, 제목만으로 마지막 시도
+  const titleOnly = cleaned || title
+  result = await searchOnce(titleOnly, "KR")
+  if (result) return result
+  return await searchOnce(titleOnly)
 }
 
 export async function GET(req: NextRequest) {
@@ -59,13 +92,11 @@ export async function GET(req: NextRequest) {
   // 2) fall back to a live lookup for songs not yet in the cache
   //    (e.g. newly added songs the batch script hasn't covered yet)
   try {
-    const term = `${artist} ${title}`.trim()
-    let result = await searchOnce(term, "KR")
-    if (!result) result = await searchOnce(term)
+    const result = await searchWithFallbacks(title, artist)
 
     const artworkUrl = result?.artworkUrl100
-      ? result.artworkUrl100.replace("100x100", "400x400")
-      : null
+        ? result.artworkUrl100.replace("100x100", "400x400")
+        : null
     const previewUrl = result?.previewUrl ?? null
 
     return NextResponse.json({ artworkUrl, previewUrl })
