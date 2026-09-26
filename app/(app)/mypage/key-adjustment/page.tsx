@@ -64,7 +64,7 @@ export default function KeyAdjustmentPage() {
 
     // filtered 부분 교체
     const filtered = React.useMemo(() => {
-        if (!query.trim()) return allSongs.slice(0, 10)
+        if (!query.trim()) return allSongs.slice(0, 30)
         return allSongs
             .filter((s) => matchesSearch(query, s.title, s.artist))
             .slice(0, 20)
