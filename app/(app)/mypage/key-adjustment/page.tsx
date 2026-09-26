@@ -153,35 +153,16 @@ export default function KeyAdjustmentPage() {
 
         {loading && <div className="mt-6 text-center text-xs text-muted-foreground">곡 목록 불러오는 중...</div>}
 
-        <div className="mt-4 space-y-1.5">
-          {filtered.map((s) => {
-            const bg = colorFromString(s.title + s.artist)
-            return (
-                <button
-                    key={s.songId}
-                    type="button"
-                    onClick={() => setSelected(s)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-[10px] text-left transition-colors ${
-                        selected?.songId === s.songId ? "bg-primary/10" : "hover:bg-surface/60"
-                    }`}
-                >
-                  <div
-                      className="h-10 w-10 shrink-0 rounded-[8px] grid place-items-center text-white text-xs font-extrabold"
-                      style={{ backgroundColor: bg }}
-                  >
-                    {s.title.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm font-semibold">{s.title}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {s.artist} · 최고음 {noteToKorean(s.maxNoteLabel)}
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </button>
-            )
-          })}
-        </div>
+          <div className="mt-4 space-y-1.5">
+              {filtered.map((s) => (
+                  <SongListItem
+                      key={s.songId}
+                      song={s}
+                      selected={selected?.songId === s.songId}
+                      onClick={() => setSelected(s)}
+                  />
+              ))}
+          </div>
 
           {selected && (
               <div
@@ -285,4 +266,53 @@ export default function KeyAdjustmentPage() {
           )}
       </main>
   )
+}
+// 여기 아래에 추가 ↓
+function SongListItem({
+                          song,
+                          selected,
+                          onClick,
+                      }: {
+    song: SongResponse
+    selected: boolean
+    onClick: () => void
+}) {
+    const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
+
+    React.useEffect(() => {
+        let cancelled = false
+        fetchArtwork(song.title, song.artist).then((data) => {
+            if (!cancelled) setArtworkUrl(data.artworkUrl)
+        })
+        return () => {
+            cancelled = true
+        }
+    }, [song.title, song.artist])
+
+    const bg = colorFromString(song.title + song.artist)
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`w-full flex items-center gap-3 p-2 rounded-[10px] text-left transition-colors ${
+                selected ? "bg-primary/10" : "hover:bg-surface/60"
+            }`}
+        >
+            <div className="h-10 w-10 shrink-0 rounded-[8px] overflow-hidden grid place-items-center text-white text-xs font-extrabold" style={{ backgroundColor: bg }}>
+                {artworkUrl ? (
+                    <img src={artworkUrl} alt={song.title} className="h-full w-full object-cover" />
+                ) : (
+                    song.title.charAt(0)
+                )}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="truncate text-sm font-semibold">{song.title}</div>
+                <div className="truncate text-[11px] text-muted-foreground">
+                    {song.artist} · 최고음 {noteToKorean(song.maxNoteLabel)}
+                </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+    )
 }
