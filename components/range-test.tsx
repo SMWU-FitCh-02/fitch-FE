@@ -17,24 +17,13 @@ type Mode = "guide" | "classic"
 const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"]
 const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
 
-// 낮은 음 테스트는 편한 음(C3)에서 시작해서 점점 내려간다
+// 낮은 음 테스트는 편한 음(기본 C4, 성별에 따라 다를 수 있음)에서 시작해서 점점 내려간다
 const LOW_LADDER_DESC = [...LOW_LADDER].reverse()
-const LOW_START_INDEX = LOW_LADDER_DESC.indexOf("C4")
-// 높은 음 테스트는 편한 음(C4)에서 시작해서 점점 올라간다
-const HIGH_START_INDEX = HIGH_LADDER.indexOf("C4")
 
 function shiftDownInHighLadder(note: string, steps: number) {
   const i = HIGH_LADDER.indexOf(note)
   if (i === -1) return note
   return HIGH_LADDER[Math.max(0, i - steps)]
-}
-
-// 가이드 모드: 현재 인덱스로부터 "지금까지 성공한 마지막 음"을 역산
-function lowestFromIndex(idx: number) {
-  return idx > LOW_START_INDEX ? LOW_LADDER_DESC[idx - 1] : LOW_LADDER_DESC[LOW_START_INDEX]
-}
-function highestFromIndex(idx: number) {
-  return idx > HIGH_START_INDEX ? HIGH_LADDER[idx - 1] : HIGH_LADDER[HIGH_START_INDEX]
 }
 
 const PIANO_SAMPLE_BASE =
@@ -44,11 +33,27 @@ export function RangeTest({
                             onComplete,
                             initialPhase = "intro",
                             userId,
+                            startNote = "C4",
                           }: {
   onComplete: (rec: RangeRecord) => void
   initialPhase?: Phase
   userId?: number
+  startNote?: string
 }) {
+  const LOW_START_INDEX = LOW_LADDER_DESC.includes(startNote)
+      ? LOW_LADDER_DESC.indexOf(startNote)
+      : LOW_LADDER_DESC.indexOf("C4")
+  const HIGH_START_INDEX = HIGH_LADDER.includes(startNote)
+      ? HIGH_LADDER.indexOf(startNote)
+      : HIGH_LADDER.indexOf("C4")
+
+  // 가이드 모드: 현재 인덱스로부터 "지금까지 성공한 마지막 음"을 역산
+  function lowestFromIndex(idx: number) {
+    return idx > LOW_START_INDEX ? LOW_LADDER_DESC[idx - 1] : LOW_LADDER_DESC[LOW_START_INDEX]
+  }
+  function highestFromIndex(idx: number) {
+    return idx > HIGH_START_INDEX ? HIGH_LADDER[idx - 1] : HIGH_LADDER[HIGH_START_INDEX]
+  }
 
   const [mode, setMode] = React.useState<Mode | null>(null)
   const [phase, setPhase] = React.useState<Phase>(initialPhase)
@@ -58,7 +63,6 @@ export function RangeTest({
   // 가이드 모드 전용
   const [lowStepIdx, setLowStepIdx] = React.useState(LOW_START_INDEX)
   const [highStepIdx, setHighStepIdx] = React.useState(HIGH_START_INDEX)
-
   // 직접 녹음(기존) 모드 전용
   const [recording, setRecording] = React.useState(false)
   const [progress, setProgress] = React.useState(0)

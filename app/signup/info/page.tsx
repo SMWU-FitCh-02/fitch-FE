@@ -95,6 +95,7 @@ export default function InfoPage() {
         username: username.trim(),
         nickname: name.trim(),
         userId: registerBody?.userId,
+        gender: gender === "MALE" ? "male" : gender === "FEMALE" ? "female" : "other",
         loggedIn: true,
       }))
       router.push("/signup/artist-preferences")
@@ -192,7 +193,7 @@ export default function InfoPage() {
           <div className="space-y-1.5">
             <Label>성별</Label>
             <p className="text-xs text-muted-foreground">
-              선택하시면 성별에 맞는 아티스트 곡을 우선 추천해드려요.
+              선택하시면 성별에 맞춰 음역대 검사를 도와드려요.
             </p>
             <div className="grid grid-cols-3 gap-2">
               {GENDER_OPTIONS.map((opt) => {
