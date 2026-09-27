@@ -1,9 +1,12 @@
 "use client"
 
-import { Heart } from "lucide-react"
+import * as React from "react"
+import { Heart, Play, Pause, Loader2 } from "lucide-react"
 import type { ChartEntry } from "@/lib/itunes"
 import { useStore } from "@/lib/store"
 import { noteToMidi } from "@/lib/songs"
+import { fetchArtwork } from "@/lib/artwork-cache"
+import { usePreviewPlayer } from "@/lib/audio-preview"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -56,6 +59,65 @@ function DifficultyBadge({
     )
 }
 
+// 곡의 30초 미리듣기 재생/일시정지 버튼. previewUrl은 클릭 시점에 lazy하게 가져온다
+// (차트에 곡이 많아서 전부 미리 fetch하면 낭비이기 때문).
+function PreviewButton({
+                           entry,
+                           size = "md",
+                       }: {
+    entry: ChartEntryWithRange
+    size?: "md" | "sm"
+}) {
+    const { playingId, toggle } = usePreviewPlayer()
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined) // undefined=아직 모름, null=없음
+    const [loading, setLoading] = React.useState(false)
+    const isPlaying = playingId === entry.id
+
+    async function handleClick(e: React.MouseEvent) {
+        e.stopPropagation()
+        e.preventDefault()
+
+        if (previewUrl) {
+            toggle(entry.id, previewUrl)
+            return
+        }
+        if (previewUrl === null) return // 이미 찾아봤는데 없었음
+
+        setLoading(true)
+        try {
+            const data = await fetchArtwork(entry.title, entry.artist)
+            setPreviewUrl(data.previewUrl ?? null)
+            if (data.previewUrl) toggle(entry.id, data.previewUrl)
+        } catch {
+            setPreviewUrl(null)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
+
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-1"
+    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+
+    return (
+        <button
+            onClick={handleClick}
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-primary font-semibold whitespace-nowrap hover:bg-black/85 transition-colors shrink-0 ${sizeClass}`}
+            aria-label={isPlaying ? "일시정지" : "미리듣기"}
+        >
+            {loading ? (
+                <Loader2 className={`${iconClass} animate-spin`} />
+            ) : isPlaying ? (
+                <Pause className={iconClass} />
+            ) : (
+                <Play className={`${iconClass} translate-x-[0.5px]`} />
+            )}
+            <span>{isPlaying ? "재생 중" : "미리듣기"}</span>
+        </button>
+    )
+}
+
 export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
     const { chartLikedIds, toggleChartLikeRemote } = useStore()
     const isSaved = chartLikedIds.has(entry.id)
@@ -83,21 +145,24 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
             </div>
             <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
                 {stars && <DifficultyBadge stars={stars} size="sm" />}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        toggleChartLikeRemote({
-                            externalId: entry.id,
-                            title: entry.title,
-                            artist: entry.artist,
-                            artworkUrl: entry.artworkUrl || null,
-                        })
-                    }}
-                    className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
-                    aria-label={isSaved ? "좋아요 취소" : "좋아요"}
-                >
-                    <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
-                </button>
+                <div className="flex items-center gap-1">
+                    <PreviewButton entry={entry} size="sm" />
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            toggleChartLikeRemote({
+                                externalId: entry.id,
+                                title: entry.title,
+                                artist: entry.artist,
+                                artworkUrl: entry.artworkUrl || null,
+                            })
+                        }}
+                        className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
+                        aria-label={isSaved ? "좋아요 취소" : "좋아요"}
+                    >
+                        <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                    </button>
+                </div>
             </div>
         </div>
     )
@@ -118,6 +183,9 @@ export function ChartSongTile({ entry }: { entry: ChartEntryWithRange }) {
                     <div className="h-full w-full bg-muted" />
                 )}
                 {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
+                <div className="absolute bottom-1.5 left-1.5">
+                    <PreviewButton entry={entry} size="sm" />
+                </div>
             </div>
             <div className="mt-2 truncate text-sm font-semibold">{entry.title}</div>
             <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
@@ -157,6 +225,9 @@ export function ChartPodiumItem({ entry }: { entry: ChartEntryWithRange }) {
                     <div className="h-full w-full bg-muted" />
                 )}
                 {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
+                <div className="absolute bottom-1.5 left-1.5">
+                    <PreviewButton entry={entry} size="sm" />
+                </div>
             </div>
             <div className="mt-2 text-xs font-bold truncate">{entry.title}</div>
             <div className="text-[10px] text-muted-foreground truncate">{entry.artist}</div>
