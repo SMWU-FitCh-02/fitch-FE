@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { api, type ChartLikeEntry } from "@/lib/api"
+import { midiToNote } from "@/lib/songs"
 
 export type RangeRecord = {
   testedAt: string
@@ -88,63 +89,95 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated || !profile.userId) return
     let cancelled = false
     api
-      .getSongBookmarks()
-      .then((songs: { songId: number }[]) => {
-        if (!cancelled) setBookmarkedSongIds(new Set(songs.map((s) => s.songId)))
-      })
-      .catch(() => {})
+        .getSongBookmarks()
+        .then((songs: { songId: number }[]) => {
+          if (!cancelled) setBookmarkedSongIds(new Set(songs.map((s) => s.songId)))
+        })
+        .catch(() => {})
     api
-      .getChartLikes()
-      .then((likes: ChartLikeEntry[]) => {
-        if (!cancelled) setChartLikedIds(new Set(likes.map((l) => l.externalId)))
-      })
-      .catch(() => {})
+        .getChartLikes()
+        .then((likes: ChartLikeEntry[]) => {
+          if (!cancelled) setChartLikedIds(new Set(likes.map((l) => l.externalId)))
+        })
+        .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [hydrated, profile.userId])
 
+  // 로그인했는데 로컬(localStorage)에 음역대 기록이 없으면 — 다른 기기/브라우저로
+  // 로그인했거나 로컬 데이터가 지워진 경우 — 백엔드에 저장된 최신 기록을 한 번
+  // 가져와서 채워준다. 이게 없으면 실제로는 기록이 있어도 매번 재검사해야만
+  // 추천/키조정 화면이 보이는 문제가 생긴다.
+  React.useEffect(() => {
+    if (!hydrated || !profile.userId || profile.range) return
+    let cancelled = false
+    api
+        .getVocalRange(profile.userId)
+        .then((r: any) => {
+          if (cancelled || r?.maxNote == null || r?.minNote == null) return
+          setProfile((p) =>
+              p.range
+                  ? p
+                  : {
+                    ...p,
+                    range: {
+                      testedAt: r.measuredAt ?? new Date().toISOString(),
+                      lowestNote: midiToNote(r.minNote),
+                      highestNote: midiToNote(r.maxNote),
+                      comfortableHigh: midiToNote(r.maxNote),
+                      voiceTone: "warm",
+                    },
+                  }
+          )
+        })
+        .catch(() => {}) // 기록 없으면(404) 조용히 무시 — 원래대로 측정 유도 화면을 보여준다
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated, profile.userId, profile.range])
+
   const setProfile = React.useCallback(
-    (p: UserProfile | ((prev: UserProfile) => UserProfile)) => {
-      setProfileState((prev) => {
-        const next = typeof p === "function" ? (p as (prev: UserProfile) => UserProfile)(prev) : p
-        try {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-        } catch {}
-        return next
-      })
-    },
-    []
+      (p: UserProfile | ((prev: UserProfile) => UserProfile)) => {
+        setProfileState((prev) => {
+          const next = typeof p === "function" ? (p as (prev: UserProfile) => UserProfile)(prev) : p
+          try {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+      },
+      []
   )
 
   // legacy local-only toggles — kept only so old code paths don't crash;
   // song bookmarks / chart likes should use the *Remote functions below
   const toggleLibrary = React.useCallback(
-    (id: string) => {
-      setProfile((p) => {
-        const exists = p.library.includes(id)
-        return {
-          ...p,
-          library: exists ? p.library.filter((x) => x !== id) : [...p.library, id],
-        }
-      })
-    },
-    [setProfile]
+      (id: string) => {
+        setProfile((p) => {
+          const exists = p.library.includes(id)
+          return {
+            ...p,
+            library: exists ? p.library.filter((x) => x !== id) : [...p.library, id],
+          }
+        })
+      },
+      [setProfile]
   )
 
   const toggleLikedChart = React.useCallback(
-    (entry: LikedChartSong) => {
-      setProfile((p) => {
-        const exists = p.likedCharts.some((c) => c.id === entry.id)
-        return {
-          ...p,
-          likedCharts: exists
-            ? p.likedCharts.filter((c) => c.id !== entry.id)
-            : [...p.likedCharts, entry],
-        }
-      })
-    },
-    [setProfile]
+      (entry: LikedChartSong) => {
+        setProfile((p) => {
+          const exists = p.likedCharts.some((c) => c.id === entry.id)
+          return {
+            ...p,
+            likedCharts: exists
+                ? p.likedCharts.filter((c) => c.id !== entry.id)
+                : [...p.likedCharts, entry],
+          }
+        })
+      },
+      [setProfile]
   )
 
   const toggleSongBookmarkRemote = React.useCallback(async (songId: number) => {
@@ -194,27 +227,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = React.useMemo<Ctx>(
-    () => ({
-      profile,
-      setProfile,
-      toggleLibrary,
-      toggleLikedChart,
-      hasRange: !!profile.range,
-      bookmarkedSongIds,
-      chartLikedIds,
-      toggleSongBookmarkRemote,
-      toggleChartLikeRemote,
-    }),
-    [
-      profile,
-      setProfile,
-      toggleLibrary,
-      toggleLikedChart,
-      bookmarkedSongIds,
-      chartLikedIds,
-      toggleSongBookmarkRemote,
-      toggleChartLikeRemote,
-    ]
+      () => ({
+        profile,
+        setProfile,
+        toggleLibrary,
+        toggleLikedChart,
+        hasRange: !!profile.range,
+        bookmarkedSongIds,
+        chartLikedIds,
+        toggleSongBookmarkRemote,
+        toggleChartLikeRemote,
+      }),
+      [
+        profile,
+        setProfile,
+        toggleLibrary,
+        toggleLikedChart,
+        bookmarkedSongIds,
+        chartLikedIds,
+        toggleSongBookmarkRemote,
+        toggleChartLikeRemote,
+      ]
   )
 
   if (!hydrated) {
