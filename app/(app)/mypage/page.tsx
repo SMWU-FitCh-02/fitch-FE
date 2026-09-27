@@ -11,6 +11,7 @@ import {
     LogOut,
     Pencil,
     ShieldCheck,
+    BookOpen,
 } from "lucide-react"
 import {useStore} from "@/lib/store"
 import {Button} from "@/components/ui/button"
@@ -56,6 +57,20 @@ export default function MyPage() {
 
     const items = [
         {
+            href: "/mypage/range-test",
+            icon: Mic,
+            title: "검사하기",
+            desc: "다시 음역대 테스트",
+            requiresRange: false,
+        },
+        {
+            href: "/mypage/history",
+            icon: LineChart,
+            title: "보컬 히스토리",
+            desc: "내 음역대 변화 기록",
+            requiresRange: true,
+        },
+        {
             href: "/mypage/range-recommendations",
             icon: Music2,
             title: "음역대 기반 노래 추천",
@@ -68,20 +83,6 @@ export default function MyPage() {
             title: "키 조정",
             desc: "부르고 싶은 곡의 추천 키 제공",
             requiresRange: true,
-        },
-        {
-            href: "/mypage/history",
-            icon: LineChart,
-            title: "보컬 히스토리",
-            desc: "내 음역대 변화 기록",
-            requiresRange: true,
-        },
-        {
-            href: "/mypage/range-test",
-            icon: Mic,
-            title: "검사하기",
-            desc: "다시 음역대 테스트",
-            requiresRange: false,
         },
     ] as const
 
@@ -156,6 +157,13 @@ export default function MyPage() {
                 설정
             </h2>
             <div className="rounded-[14px] bg-card border border-border/60 divide-y divide-border/60 overflow-hidden">
+                <Link href="/mypage/guide" className="flex items-center gap-3 p-4 hover:bg-surface/50">
+                    <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
+                        <BookOpen className="h-5 w-5"/>
+                    </div>
+                    <div className="flex-1 text-sm font-semibold">사용 설명서</div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground"/>
+                </Link>
                 <Link href="/mypage/privacy" className="flex items-center gap-3 p-4 hover:bg-surface/50">
                     <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
                         <ShieldCheck className="h-5 w-5"/>

@@ -336,6 +336,13 @@ export function noteToMidi(note: string): number {
   return (parseInt(octave, 10) + 1) * 12 + (NOTE_TO_MIDI[pitch] ?? 0)
 }
 
+const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+export function midiToNote(midi: number): string {
+  const note = NOTES[((midi % 12) + 12) % 12]
+  const octave = Math.floor(midi / 12) - 1
+  return `${note}${octave}`
+}
+
 export function midiDistance(a: string, b: string): number {
   return Math.abs(noteToMidi(a) - noteToMidi(b))
 }
