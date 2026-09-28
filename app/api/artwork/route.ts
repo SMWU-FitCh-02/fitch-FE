@@ -110,14 +110,6 @@ async function searchWithFallbacks(title: string, artist: string) {
   if (result) return result
   return await pickBestMatch(titleOnly, undefined, artist, true)
 }
-  // 아티스트명까지 포함해서 실패하는 경우, 제목만으로 마지막 시도.
-  // 단, 이 단계는 검색어에 아티스트가 없어서 엉뚱한 곡이 걸리기 가장 쉬우므로
-  // 아티스트 일치 검증(strict=true)은 계속 유지한다 — 못 찾으면 그냥 없는 걸로 처리.
-  const titleOnly = cleaned || title
-  result = await pickBestMatch(titleOnly, "KR", artist, true)
-  if (result) return result
-  return await pickBestMatch(titleOnly, undefined, artist, true)
-}
 
 export async function GET(req: NextRequest) {
   const title = req.nextUrl.searchParams.get("title") || ""
