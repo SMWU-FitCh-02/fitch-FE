@@ -64,12 +64,14 @@ function DifficultyBadge({
 function PreviewButton({
                            entry,
                            size = "md",
+                           showLabel = true,
                        }: {
     entry: ChartEntryWithRange
     size?: "md" | "sm"
+    showLabel?: boolean
 }) {
     const { playingId, toggle } = usePreviewPlayer()
-    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined) // undefined=아직 모름, null=없음
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
     const [loading, setLoading] = React.useState(false)
     const isPlaying = playingId === entry.id
 
@@ -81,7 +83,7 @@ function PreviewButton({
             toggle(entry.id, previewUrl)
             return
         }
-        if (previewUrl === null) return // 이미 찾아봤는데 없었음
+        if (previewUrl === null) return
 
         setLoading(true)
         try {
@@ -95,24 +97,38 @@ function PreviewButton({
         }
     }
 
-    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
+    if (previewUrl === null) return null
 
-    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-1"
     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+    const icon = loading ? (
+        <Loader2 className={`${iconClass} animate-spin`} />
+    ) : isPlaying ? (
+        <Pause className={iconClass} />
+    ) : (
+        <Play className={`${iconClass} translate-x-[0.5px]`} />
+    )
 
+    if (!showLabel) {
+        const circleSize = size === "sm" ? "h-6 w-6" : "h-7 w-7"
+        return (
+            <button
+                onClick={handleClick}
+                className={`inline-flex items-center justify-center rounded-full bg-black/70 backdrop-blur text-primary hover:bg-black/85 transition-colors shrink-0 ${circleSize}`}
+                aria-label={isPlaying ? "일시정지" : "미리듣기"}
+            >
+                {icon}
+            </button>
+        )
+    }
+
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
     return (
         <button
             onClick={handleClick}
             className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-primary font-semibold whitespace-nowrap hover:bg-black/85 transition-colors shrink-0 ${sizeClass}`}
             aria-label={isPlaying ? "일시정지" : "미리듣기"}
         >
-            {loading ? (
-                <Loader2 className={`${iconClass} animate-spin`} />
-            ) : isPlaying ? (
-                <Pause className={iconClass} />
-            ) : (
-                <Play className={`${iconClass} translate-x-[0.5px]`} />
-            )}
+            {icon}
             <span>{isPlaying ? "재생 중" : "미리듣기"}</span>
         </button>
     )
@@ -184,7 +200,7 @@ export function ChartSongTile({ entry }: { entry: ChartEntryWithRange }) {
                 )}
                 {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
                 <div className="absolute bottom-1.5 left-1.5">
-                    <PreviewButton entry={entry} size="sm" />
+                    <PreviewButton entry={entry} size="sm" showLabel={false} />
                 </div>
             </div>
             <div className="mt-2 truncate text-sm font-semibold">{entry.title}</div>
@@ -226,7 +242,7 @@ export function ChartPodiumItem({ entry }: { entry: ChartEntryWithRange }) {
                 )}
                 {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
                 <div className="absolute bottom-1.5 left-1.5">
-                    <PreviewButton entry={entry} size="sm" />
+                    <PreviewButton entry={entry} size="sm" showLabel={false} />
                 </div>
             </div>
             <div className="mt-2 text-xs font-bold truncate">{entry.title}</div>
