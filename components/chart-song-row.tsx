@@ -61,8 +61,8 @@ function DifficultyBadge({
 
 // 곡의 30초 미리듣기 재생/일시정지 버튼. previewUrl은 클릭 시점에 lazy하게 가져온다
 // (차트에 곡이 많아서 전부 미리 fetch하면 낭비이기 때문).
-// 곡의 30초 미리듣기 재생/일시정지 버튼.
-// 마운트 시점에 미리 previewUrl을 확인해서, 없는 곡은 버튼 자체를 렌더링하지 않는다.
+// showLabel=false면 좁은 카드(포디움/타일)용 아이콘 전용 버튼으로 렌더링해서
+// 난이도 뱃지랑 겹치지 않게 한다.
 function PreviewButton({
                            entry,
                            size = "md",
@@ -73,34 +73,38 @@ function PreviewButton({
     showLabel?: boolean
 }) {
     const { playingId, toggle } = usePreviewPlayer()
-    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined) // undefined=확인 중
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined) // undefined=아직 모름, null=없음
+    const [loading, setLoading] = React.useState(false)
     const isPlaying = playingId === entry.id
 
-    React.useEffect(() => {
-        let cancelled = false
-        fetchArtwork(entry.title, entry.artist)
-            .then((data) => {
-                if (!cancelled) setPreviewUrl(data.previewUrl ?? null)
-            })
-            .catch(() => {
-                if (!cancelled) setPreviewUrl(null)
-            })
-        return () => {
-            cancelled = true
-        }
-    }, [entry.title, entry.artist])
-
-    function handleClick(e: React.MouseEvent) {
+    async function handleClick(e: React.MouseEvent) {
         e.stopPropagation()
         e.preventDefault()
-        if (!previewUrl) return
-        toggle(entry.id, previewUrl)
+
+        if (previewUrl) {
+            toggle(entry.id, previewUrl)
+            return
+        }
+        if (previewUrl === null) return // 이미 찾아봤는데 없었음
+
+        setLoading(true)
+        try {
+            const data = await fetchArtwork(entry.title, entry.artist)
+            setPreviewUrl(data.previewUrl ?? null)
+            if (data.previewUrl) toggle(entry.id, data.previewUrl)
+        } catch {
+            setPreviewUrl(null)
+        } finally {
+            setLoading(false)
+        }
     }
 
-    if (!previewUrl) return null // 확인 중이거나(undefined) 없는 곡(null)은 버튼을 그리지 않음
+    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
 
     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
-    const icon = isPlaying ? (
+    const icon = loading ? (
+        <Loader2 className={`${iconClass} animate-spin`} />
+    ) : isPlaying ? (
         <Pause className={iconClass} />
     ) : (
         <Play className={`${iconClass} translate-x-[0.5px]`} />
