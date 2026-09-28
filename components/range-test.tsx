@@ -193,6 +193,7 @@ export function RangeTest({
 
   function handleLowFail() {
     getAudioCtx()
+    setLowStepIdx((i) => Math.min(LOW_LADDER_DESC.length - 1, i + 1))  // 지금 음도 성공으로 카운트
     goToHighPhaseGuide()
   }
 
@@ -208,6 +209,7 @@ export function RangeTest({
 
   function handleHighFail() {
     getAudioCtx()
+    setHighStepIdx((i) => Math.min(HIGH_LADDER.length - 1, i + 1))  // 지금 음도 성공으로 카운트
     setPhase("analyzing")
   }
 
