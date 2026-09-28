@@ -3,11 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Music2, BookmarkCheck, TrendingUp, User } from "lucide-react"
+import { Home, Music2, Heart, TrendingUp, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const items = [
-    { href: "/library", label: "보관함", icon: BookmarkCheck },
+    { href: "/library", label: "보관함", icon: Heart },
     { href: "/recommendations", label: "추천곡", icon: Music2 },
     { href: "/home", label: "홈", icon: Home },
     { href: "/chart", label: "인기차트", icon: TrendingUp },
