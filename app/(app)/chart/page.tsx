@@ -112,7 +112,7 @@ export default function ChartPage() {
     }, [source, category])
 
     // ── 멜론 차트 ──
-    const [melonChart, setMelonChart] = React.useState<ChartEntry[]>([])
+    const [melonChart, setMelonChart] = React.useState<ChartEntryWithRange[]>([])
     const [melonSource, setMelonSource] = React.useState<ChartSource>("melon")
     const [melonLoading, setMelonLoading] = React.useState(true)
     const [melonError, setMelonError] = React.useState("")
@@ -123,16 +123,31 @@ export default function ChartPage() {
         setMelonLoading(true)
         setMelonError("")
         fetchKoreaTopSongsWithSource(100)
-            .then(({ source: src, entries }) => {
+            .then(async ({ source: src, entries }) => {
                 if (cancelled) return
                 setMelonSource(src)
                 setMelonChart(entries)
+                setMelonLoading(false)
+                try {
+                    const ranges = await api.getVocalRanges(
+                        entries.map((e) => ({ title: e.title, artist: e.artist }))
+                    )
+                    if (cancelled) return
+                    setMelonChart((prev) =>
+                        prev.map((e) => {
+                            const r = ranges[buildSongKey(e.title, e.artist)]
+                            return r ? { ...e, minNote: r.minNote, maxNote: r.maxNote } : e
+                        })
+                    )
+                } catch {
+                    // 음역대 조회 실패는 조용히 무시
+                }
             })
             .catch(() => {
-                if (!cancelled) setMelonError("차트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
-            })
-            .finally(() => {
-                if (!cancelled) setMelonLoading(false)
+                if (!cancelled) {
+                    setMelonError("차트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+                    setMelonLoading(false)
+                }
             })
         return () => {
             cancelled = true
@@ -300,7 +315,7 @@ export default function ChartPage() {
 
             {!loading && !error && chart.length > 0 && (
                 <>
-                    {profile.range && source === "tj" && (
+                    {profile.range && (
                         <p className="text-[8px] text-muted-foreground text-right mb-2 px-1">
                             내 음역대 기준    {" "}
                             <span className="text-emerald-400">★</span> 쉬움   {" "}
