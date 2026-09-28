@@ -89,20 +89,27 @@ function cleanTitle(title: string): string {
 
 async function searchWithFallbacks(title: string, artist: string) {
   const term = `${artist} ${title}`.trim()
-  let result = await pickBestMatch(term, "KR", artist, true)
+  let result = await pickBestMatch(term, "KR", artist, false)
   if (result) return result
-  result = await pickBestMatch(term, undefined, artist, true)
+  result = await pickBestMatch(term, undefined, artist, false)
   if (result) return result
 
   const cleaned = cleanTitle(title)
   if (cleaned && cleaned !== title) {
     const cleanTerm = `${artist} ${cleaned}`.trim()
-    result = await pickBestMatch(cleanTerm, "KR", artist, true)
+    result = await pickBestMatch(cleanTerm, "KR", artist, false)
     if (result) return result
-    result = await pickBestMatch(cleanTerm, undefined, artist, true)
+    result = await pickBestMatch(cleanTerm, undefined, artist, false)
     if (result) return result
   }
 
+  // 아티스트명 없이 "제목만"으로 검색하는 최후 수단 — 여기서만 엄격하게
+  // 아티스트 일치를 검증한다 (엉뚱한 커버/반주 버전이 걸리기 가장 쉬운 단계라서).
+  const titleOnly = cleaned || title
+  result = await pickBestMatch(titleOnly, "KR", artist, true)
+  if (result) return result
+  return await pickBestMatch(titleOnly, undefined, artist, true)
+}
   // 아티스트명까지 포함해서 실패하는 경우, 제목만으로 마지막 시도.
   // 단, 이 단계는 검색어에 아티스트가 없어서 엉뚱한 곡이 걸리기 가장 쉬우므로
   // 아티스트 일치 검증(strict=true)은 계속 유지한다 — 못 찾으면 그냥 없는 걸로 처리.
