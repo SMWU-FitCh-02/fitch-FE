@@ -22,12 +22,36 @@ function loadStaticCache(): Record<string, CacheEntry> {
   return staticCache!
 }
 
+// 커버/반주/노래방 버전처럼 원곡이 아닌 트랙을 걸러내기 위한 키워드
+const BAD_KEYWORDS = [
+  "inst", "instrumental", "mr", "piano", "acoustic ver",
+  "cover", "karaoke", "커버", "가라오케", "노래방", "반주",
+]
+
+function containsBadKeyword(s: string): boolean {
+  const n = (s || "").toLowerCase()
+  return BAD_KEYWORDS.some((k) => n.includes(k))
+}
+
+function normalizeName(s: string): string {
+  return (s || "").toLowerCase().replace(/[\s\-_.·・()（）]/g, "")
+}
+
+// 아티스트명 표기가 서로 달라도(예: "소연" vs "소연 (SOYEON)") 부분 포함 관계면 통과시킨다
+function isArtistMatch(resultArtist: string, expectedArtist: string): boolean {
+  if (!expectedArtist) return true
+  const a = normalizeName(expectedArtist)
+  const b = normalizeName(resultArtist)
+  if (!a || !b) return false
+  return a.includes(b) || b.includes(a)
+}
+
 async function searchOnce(term: string, country?: string) {
   const url = new URL("https://itunes.apple.com/search")
   url.searchParams.set("term", term)
   url.searchParams.set("media", "music")
   url.searchParams.set("entity", "song")
-  url.searchParams.set("limit", "3")
+  url.searchParams.set("limit", "5")
   if (country) url.searchParams.set("country", country)
 
   const res = await fetch(url.toString(), {
@@ -37,9 +61,20 @@ async function searchOnce(term: string, country?: string) {
     },
     next: { revalidate: 86400 },
   })
-  if (!res.ok) return null
+  if (!res.ok) return []
   const data = await res.json()
-  return data?.results?.[0] ?? null
+  return data?.results ?? []
+}
+
+// 검색 결과 중, 나쁜 키워드가 없고(커버/반주 등) 아티스트가 맞는(strict일 때) 첫 결과를 채택
+async function pickBestMatch(term: string, country: string | undefined, artist: string, strict: boolean) {
+  const results = await searchOnce(term, country)
+  for (const r of results) {
+    if (containsBadKeyword(r.trackName || "") || containsBadKeyword(r.collectionName || "")) continue
+    if (strict && !isArtistMatch(r.artistName || "", artist)) continue
+    return r
+  }
+  return null
 }
 
 // "응급실(쾌걸춘향OST)", "천상연(웹툰 '선녀외전' X 이창섭(LEE CHANGSUB))" 처럼
@@ -54,25 +89,27 @@ function cleanTitle(title: string): string {
 
 async function searchWithFallbacks(title: string, artist: string) {
   const term = `${artist} ${title}`.trim()
-  let result = await searchOnce(term, "KR")
+  let result = await pickBestMatch(term, "KR", artist, true)
   if (result) return result
-  result = await searchOnce(term)
+  result = await pickBestMatch(term, undefined, artist, true)
   if (result) return result
 
   const cleaned = cleanTitle(title)
   if (cleaned && cleaned !== title) {
     const cleanTerm = `${artist} ${cleaned}`.trim()
-    result = await searchOnce(cleanTerm, "KR")
+    result = await pickBestMatch(cleanTerm, "KR", artist, true)
     if (result) return result
-    result = await searchOnce(cleanTerm)
+    result = await pickBestMatch(cleanTerm, undefined, artist, true)
     if (result) return result
   }
 
-  // 아티스트명까지 포함해서 실패하는 경우, 제목만으로 마지막 시도
+  // 아티스트명까지 포함해서 실패하는 경우, 제목만으로 마지막 시도.
+  // 단, 이 단계는 검색어에 아티스트가 없어서 엉뚱한 곡이 걸리기 가장 쉬우므로
+  // 아티스트 일치 검증(strict=true)은 계속 유지한다 — 못 찾으면 그냥 없는 걸로 처리.
   const titleOnly = cleaned || title
-  result = await searchOnce(titleOnly, "KR")
+  result = await pickBestMatch(titleOnly, "KR", artist, true)
   if (result) return result
-  return await searchOnce(titleOnly)
+  return await pickBestMatch(titleOnly, undefined, artist, true)
 }
 
 export async function GET(req: NextRequest) {
