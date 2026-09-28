@@ -13,7 +13,7 @@ export default function SongDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const songId = Number(params.id)
-  const { toggleSongBookmarkRemote, bookmarkedSongIds } = useStore()
+  const { bookmarkedSongIds } = useStore()
   const isSaved = bookmarkedSongIds.has(songId)
 
   const [song, setSong] = React.useState<SongResponse | null>(null)
@@ -83,23 +83,12 @@ export default function SongDetailPage() {
   const bg = colorFromString(song.title + song.artist)
 
   return (
-    <main className="px-4 pt-4 pb-24">
-      <header className="flex items-center justify-between px-1 mb-4">
-        <button onClick={() => router.back()} className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <button
-          onClick={() => toggleSongBookmarkRemote(songId)}
-          className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
-        >
-          {isSaved ? (
-            <BookmarkCheck className="h-5 w-5 text-primary" />
-          ) : (
-            <Bookmark className="h-5 w-5" />
-          )}
-        </button>
-      </header>
-
+      <main className="px-4 pt-4 pb-24">
+        <header className="flex items-center justify-between px-1 mb-4">
+          <button onClick={() => router.back()} className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </header>
       <div className="rounded-[16px] overflow-hidden border border-border mb-5">
         {artworkUrl ? (
           <img src={artworkUrl} alt={song.title} className="w-full aspect-square object-cover" />
