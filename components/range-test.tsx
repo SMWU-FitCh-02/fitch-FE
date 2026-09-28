@@ -554,7 +554,7 @@ export function RangeTest({
           </div>
           <div>
             <div className="text-lg font-bold">
-              {mode === "classic" ? "AI가 당신의 목소리를 분석 중" : "결과를 정리하는 중"}
+              {mode === "classic" ? "목소리를 분석하는 중" : "결과를 정리하는 중"}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">잠시만 기다려주세요...</div>
           </div>
