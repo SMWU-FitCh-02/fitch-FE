@@ -142,7 +142,9 @@ export function RangeTest({
       }
       mr.start(1000)
       mediaRecorderRef.current = mr
-    } catch {
+      setMicNotice("") // 이전 시도에서 떴던 안내 문구가 있다면 성공 시 지워준다
+    } catch (err) {
+      console.error("[range-test] getUserMedia/MediaRecorder 실패:", err)
       setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
     }
   }
