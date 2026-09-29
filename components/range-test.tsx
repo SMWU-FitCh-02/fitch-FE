@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { noteToKorean } from "@/lib/songs"
 
-type Phase = "intro" | "low" | "high" | "analyzing" | "done"
+type Phase = "intro" | "low" | "high" | "analyzing" | "done" | "failed"
 type Mode = "guide" | "classic"
 
 // Note ladder going up
@@ -271,50 +271,57 @@ export function RangeTest({
     let cancelled = false
 
     async function run() {
-      let lowest: string
-      let highest: string
-
-      if (mode === "guide") {
-        lowest = lowestFromIndex(lowStepIdx)
-        highest = highestFromIndex(highStepIdx)
-      } else {
-        lowest = LOW_LADDER[Math.max(0, classicLowIdx - 1)]
-        highest = HIGH_LADDER[Math.min(HIGH_LADDER.length - 1, classicHighIdx + 1)]
-      }
-      const comfortable = shiftDownInHighLadder(highest, 2)
       const tones = ["bright", "warm", "husky", "soft"] as const
-      let rec: RangeRecord | null = null
 
-      // 서버 분석은 '직접 녹음' 모드에서만 시도한다
-      if (mode === "classic" && userId && recordedBlobRef.current && recordedBlobRef.current.size > 0) {
-        try {
-          const res = await api.uploadVoice(userId, recordedBlobRef.current, "range-test.webm")
-          rec = {
-            testedAt: res.measuredAt || new Date().toISOString(),
-            lowestNote: res.minNoteLabel || lowest,
-            highestNote: res.maxNoteLabel || highest,
-            comfortableHigh: res.maxNoteLabel ? shiftDownInHighLadder(res.maxNoteLabel, 2) : comfortable,
-            voiceTone: tones[Math.floor(Math.random() * tones.length)],
-          }
-        } catch {
-          setMicNotice("서버 분석에 실패해 직접 측정한 결과로 대신했어요.")
-        }
-      }
-
-      if (!rec) {
+      // 가이드 모드: 실제 음성 분석을 하지 않는, 버튼 클릭 기반 추정이므로 항상 그대로 진행
+      if (mode === "guide") {
+        const lowest = lowestFromIndex(lowStepIdx)
+        const highest = highestFromIndex(highStepIdx)
         await new Promise((r) => setTimeout(r, 1000))
-        rec = {
+        if (cancelled) return
+        setResult({
           testedAt: new Date().toISOString(),
           lowestNote: lowest,
           highestNote: highest,
-          comfortableHigh: comfortable,
+          comfortableHigh: shiftDownInHighLadder(highest, 2),
           voiceTone: tones[Math.floor(Math.random() * tones.length)],
-        }
+        })
+        setPhase("done")
+        return
       }
 
-      if (!cancelled) {
-        setResult(rec)
-        setPhase("done")
+      // 직접 녹음 모드: 서버 분석 결과만 신뢰한다. 실제 녹음이 없거나 분석이 실패하면
+      // 추정치로 대체하지 않고 '측정된 값이 없습니다' 화면으로 보낸다.
+      const hasRealRecording = !!recordedBlobRef.current && recordedBlobRef.current.size > 0
+
+      if (!hasRealRecording) {
+        if (!cancelled) setPhase("failed")
+        return
+      }
+
+      if (!userId) {
+        if (!cancelled) setPhase("failed")
+        return
+      }
+
+      try {
+        const res = await api.uploadVoice(userId, recordedBlobRef.current!, "range-test.webm")
+        if (!res.minNoteLabel || !res.maxNoteLabel) {
+          if (!cancelled) setPhase("failed")
+          return
+        }
+        if (!cancelled) {
+          setResult({
+            testedAt: res.measuredAt || new Date().toISOString(),
+            lowestNote: res.minNoteLabel,
+            highestNote: res.maxNoteLabel,
+            comfortableHigh: shiftDownInHighLadder(res.maxNoteLabel, 2),
+            voiceTone: tones[Math.floor(Math.random() * tones.length)],
+          })
+          setPhase("done")
+        }
+      } catch {
+        if (!cancelled) setPhase("failed")
       }
     }
 
@@ -559,6 +566,30 @@ export function RangeTest({
               {mode === "classic" ? "목소리를 분석하는 중" : "결과를 정리하는 중"}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">잠시만 기다려주세요...</div>
+          </div>
+        </div>
+    )
+  }
+
+  if (phase === "failed") {
+    return (
+        <div className="flex flex-col items-center text-center gap-6 py-10">
+          <div className="relative h-32 w-32">
+            <div className="absolute inset-0 rounded-full bg-destructive/20 blur-2xl" />
+            <div className="absolute inset-2 rounded-full bg-surface grid place-items-center">
+              <MicOff className="h-12 w-12 text-destructive" />
+            </div>
+          </div>
+          <div>
+            <div className="text-lg font-bold">측정된 값이 없습니다</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              목소리 분석에 실패했어요. 다시 시도해주세요.
+            </div>
+          </div>
+          <div className="w-full">
+            <Button variant="brand" size="lg" className="w-full" onClick={resetAll}>
+              <RotateCcw className="h-4 w-4" /> 다시 측정하기
+            </Button>
           </div>
         </div>
     )
