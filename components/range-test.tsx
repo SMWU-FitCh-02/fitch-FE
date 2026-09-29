@@ -649,5 +649,5 @@ export function RangeTest({
           </Button>
         </div>
       </div>
-  )
+)
 }
