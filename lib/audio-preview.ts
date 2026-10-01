@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { registerPreviewSource, stopOtherPreviews } from "./preview-bus"
 
 let sharedAudio: HTMLAudioElement | null = null
 let currentId: string | null = null
@@ -19,6 +20,14 @@ function setCurrentId(id: string | null) {
     listeners.forEach((l) => l(id))
 }
 
+function stopPreview() {
+    sharedAudio?.pause()
+    setCurrentId(null)
+}
+
+// 키 조정 미리듣기(key-adjust-player.ts)가 재생을 시작할 때 이쪽을 멈출 수 있도록 등록
+registerPreviewSource("normal", stopPreview)
+
 export function usePreviewPlayer() {
     const [playingId, setPlayingId] = React.useState<string | null>(currentId)
 
@@ -36,6 +45,7 @@ export function usePreviewPlayer() {
             setCurrentId(null)
             return
         }
+        stopOtherPreviews("normal") // 키 조정 미리듣기가 재생 중이었다면 먼저 정지
         audio.src = url
         audio.currentTime = 0
         audio.play().catch(() => {})

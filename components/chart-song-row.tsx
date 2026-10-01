@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Heart, Play, Pause, Loader2 } from "lucide-react"
+import { Heart, Play, Pause, Loader2, Wand2 } from "lucide-react"
 import type { ChartEntry } from "@/lib/itunes"
 import { useStore } from "@/lib/store"
 import { noteToMidi } from "@/lib/songs"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { usePreviewPlayer } from "@/lib/audio-preview"
+import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -35,6 +36,22 @@ export function computeDifficultyStars(
 function useDifficultyStars(entry: ChartEntryWithRange): 1 | 2 | 3 | null {
     const { profile } = useStore()
     return computeDifficultyStars(entry, profile.range)
+}
+
+// 곡이 내 음역대를 벗어난 만큼 몇 반음을 조정해야 내 음역대 안에 들어오는지 계산.
+// 0이면 이미 내 음역대 안이라 조정이 필요 없다는 뜻.
+export function computeKeySemitoneShift(
+    entry: ChartEntryWithRange,
+    range?: VocalRange | null
+): number {
+    if (entry.minNote == null || entry.maxNote == null || !range) return 0
+    const userMin = noteToMidi(range.lowestNote)
+    const userMax = noteToMidi(range.highestNote)
+    const overHigh = Math.max(0, entry.maxNote - userMax)
+    const overLow = Math.max(0, userMin - entry.minNote)
+    if (overHigh >= overLow && overHigh > 0) return -overHigh // 고음이 안 닿으면 내려서 맞춤
+    if (overLow > 0) return overLow // 저음이 안 닿으면 올려서 맞춤
+    return 0
 }
 
 // 앨범 커버 위에 올라가는 작은 별 뱃지 (어느 배경에서도 잘 보이도록 어두운 배경 + 색 텍스트)
@@ -136,6 +153,63 @@ function PreviewButton({
     )
 }
 
+// "내 키로 듣기" 버튼 — 곡이 내 음역대를 벗어나 있을 때만 보임.
+// 반음 수(shift)는 computeKeySemitoneShift로 클라이언트에서 바로 계산하고,
+// 재생은 PreviewButton과 같은 previewUrl(fetchArtwork)을 그대로 쓰되
+// Tone.js PitchShift를 거쳐서 들려준다.
+function KeyAdjustButton({
+                             entry,
+                             size = "md",
+                         }: {
+    entry: ChartEntryWithRange
+    size?: "md" | "sm"
+}) {
+    const { profile } = useStore()
+    const shift = computeKeySemitoneShift(entry, profile.range)
+    const { playingId, state, toggle } = useKeyAdjustPreviewPlayer()
+    const isPlaying = playingId === entry.id
+
+    if (shift === 0) return null // 이미 내 음역대 안이면 키 조정할 필요 없음
+
+    async function handleClick(e: React.MouseEvent) {
+        e.stopPropagation()
+        e.preventDefault()
+
+        if (isPlaying) {
+            toggle(entry.id, "", 0) // currentId가 같으면 내부적으로 정지 분기를 타므로 url/semitone은 쓰이지 않음
+            return
+        }
+
+        const data = await fetchArtwork(entry.title, entry.artist)
+        if (!data.previewUrl) return
+        toggle(entry.id, data.previewUrl, shift)
+    }
+
+    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+    const icon =
+        state === "loading" ? (
+            <Loader2 className={`${iconClass} animate-spin`} />
+        ) : isPlaying ? (
+            <Pause className={iconClass} />
+        ) : (
+            <Wand2 className={iconClass} />
+        )
+
+    const label = shift > 0 ? `+${shift}키` : `${shift}키`
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
+
+    return (
+        <button
+            onClick={handleClick}
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-brand font-semibold whitespace-nowrap hover:bg-black/85 transition-colors shrink-0 ${sizeClass}`}
+            aria-label={isPlaying ? "일시정지" : `내 키로 듣기 (${label})`}
+        >
+            {icon}
+            <span>{label}</span>
+        </button>
+    )
+}
+
 export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
     const { chartLikedIds, toggleChartLikeRemote } = useStore()
     const isSaved = chartLikedIds.has(entry.id)
@@ -164,6 +238,7 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
             <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
                 {stars && <DifficultyBadge stars={stars} size="sm" />}
                 <div className="flex items-center gap-1">
+                    <KeyAdjustButton entry={entry} size="sm" />
                     <PreviewButton entry={entry} size="sm" />
                     <button
                         onClick={(e) => {
