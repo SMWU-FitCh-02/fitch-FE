@@ -119,13 +119,14 @@ function PreviewButton({
     if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
 
     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
-    const icon = loading ? (
-        <Loader2 className={`${iconClass} animate-spin`} />
-    ) : isPlaying ? (
-        <Pause className={iconClass} />
-    ) : (
-        <Play className={`${iconClass} translate-x-[0.5px]`} />
-    )
+    const icon =
+        state === "loading" && isPlaying ? (
+            <Loader2 className={`${iconClass} animate-spin`} />
+        ) : isPlaying ? (
+            <Pause className={iconClass} />
+        ) : (
+            <Wand2 className={iconClass} />
+        )
 
     if (!showLabel) {
         const circleSize = size === "sm" ? "h-6 w-6" : "h-7 w-7"
