@@ -157,6 +157,12 @@ function PreviewButton({
 // 반음 수(shift)는 computeKeySemitoneShift로 클라이언트에서 바로 계산하고,
 // 재생은 PreviewButton과 같은 previewUrl(fetchArtwork)을 그대로 쓰되
 // Tone.js PitchShift를 거쳐서 들려준다.
+// 포먼트 보정이 없는 피치시프트라 반음 수가 클수록 음색이 변하는(다람쥐/괴물
+// 목소리) 현상이 심해짐. 너무 크게 조정해야 하는 곡은 미리듣기 품질이 떨어져서
+// 오히려 혼란을 줄 수 있으므로, 이 범위를 넘으면 "내 키로 듣기" 버튼 자체를
+// 숨긴다 (일반 미리듣기는 그대로 제공됨).
+const MAX_KEY_ADJUST_SEMITONES = 4
+
 function KeyAdjustButton({
                              entry,
                              size = "md",
@@ -170,6 +176,7 @@ function KeyAdjustButton({
     const isPlaying = playingId === entry.id
 
     if (shift === 0) return null // 이미 내 음역대 안이면 키 조정할 필요 없음
+    if (Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES) return null // 조정 폭이 너무 크면 음질 저하가 심해서 숨김
 
     async function handleClick(e: React.MouseEvent) {
         e.stopPropagation()
