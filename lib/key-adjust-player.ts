@@ -7,9 +7,11 @@ import { registerPreviewSource, stopOtherPreviews } from "./preview-bus"
 // 일반 미리듣기(audio-preview.ts)와 같은 싱글톤 패턴 — 앱 전체에서
 // "키 조정 미리듣기"도 한 번에 하나만 재생되도록 함.
 //
-// 이전엔 Tone.PitchShift(그래뉼러 딜레이 방식)를 썼는데, 보컬처럼 지속음이
-// 많은 소스에서 지글거리는 아티팩트가 심했음. SoundTouch(WSOLA 계열)는
-// 음의 피치 주기를 분석해서 자연스럽게 겹쳐 붙이는 방식이라 음질이 훨씬 나음.
+// 피치시프트는 SoundTouch(WSOLA 계열)를 씀 — Tone.PitchShift(그래뉼러 딜레이)보다
+// 지글거리는 아티팩트가 적음. 다만 두 방식 다 "포먼트 보정"이 없어서 반음 수가
+// 클수록 음색 자체가 변하는(다람쥐/괴물 목소리) 현상은 공통으로 생김.
+// 그래서 재생 전에 L-R 위상상쇄로 센터에 배치된 보컬을 줄여(완벽한 보컬 제거는
+// 아니지만 노래방 MR 비슷하게 들리게 함), 음색 변조가 덜 거슬리게 들리도록 함.
 
 type PlaybackState = "idle" | "loading" | "playing" | "error"
 
@@ -20,7 +22,7 @@ let stNode: SoundTouchNode | null = null
 let gainNode: GainNode | null = null
 let currentId: string | null = null
 const listeners = new Set<(id: string | null) => void>()
-const bufferCache = new Map<string, AudioBuffer>() // previewUrl -> 디코딩된 오디오
+const bufferCache = new Map<string, AudioBuffer>() // previewUrl -> 보컬 줄인 디코딩 버퍼
 
 function getAudioContext() {
     if (!audioCtx) audioCtx = new AudioContext()
@@ -50,14 +52,49 @@ function stopKeyAdjustPreview() {
 // 일반 미리듣기가 재생을 시작할 때 이쪽을 멈출 수 있도록 등록
 registerPreviewSource("keyadjust", stopKeyAdjustPreview)
 
-async function loadBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer> {
+// 센터(가운데)에 배치된 보컬을 L-R 위상상쇄로 줄인다.
+// 완벽한 보컬 제거는 아니고 (믹스에 따라 효과 차이가 큼), 모노 소스면 효과가 없음.
+function reduceCenterVocal(ctx: AudioContext, buffer: AudioBuffer): AudioBuffer {
+    if (buffer.numberOfChannels < 2) return buffer // 스테레오가 아니면 L-R 트릭 불가
+
+    const left = buffer.getChannelData(0)
+    const right = buffer.getChannelData(1)
+    const length = buffer.length
+
+    const out = ctx.createBuffer(2, length, buffer.sampleRate)
+    const outL = out.getChannelData(0)
+    const outR = out.getChannelData(1)
+
+    let peak = 0
+    for (let i = 0; i < length; i++) {
+        const diff = left[i] - right[i]
+        outL[i] = diff
+        outR[i] = diff
+        const abs = Math.abs(diff)
+        if (abs > peak) peak = abs
+    }
+
+    // L-R 연산 특성상 전체 음량이 많이 줄어들어서, 피크 기준으로 다시 키워줌
+    if (peak > 0.001 && peak < 0.9) {
+        const gain = 0.9 / peak
+        for (let i = 0; i < length; i++) {
+            outL[i] *= gain
+            outR[i] *= gain
+        }
+    }
+
+    return out
+}
+
+async function loadProcessedBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer> {
     const cached = bufferCache.get(url)
     if (cached) return cached
     const res = await fetch(url)
     const arrayBuffer = await res.arrayBuffer()
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-    bufferCache.set(url, audioBuffer)
-    return audioBuffer
+    const decoded = await ctx.decodeAudioData(arrayBuffer)
+    const reduced = reduceCenterVocal(ctx, decoded)
+    bufferCache.set(url, reduced)
+    return reduced
 }
 
 export function useKeyAdjustPreviewPlayer() {
@@ -95,7 +132,7 @@ export function useKeyAdjustPreviewPlayer() {
                 processorRegistered = true
             }
 
-            const audioBuffer = await loadBuffer(ctx, previewUrl)
+            const audioBuffer = await loadProcessedBuffer(ctx, previewUrl)
 
             const node = new SoundTouchNode({ context: ctx })
             node.pitchSemitones.value = semitones
