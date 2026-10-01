@@ -59,7 +59,12 @@ export function useKeyAdjustPreviewPlayer() {
             // 브라우저 오디오 정책상 반드시 사용자 클릭 이벤트 핸들러 "안에서" 호출돼야 함
             await Tone.start()
 
-            pitchShift = new Tone.PitchShift({ pitch: semitones }).toDestination()
+            // windowSize를 키우면(기본 0.1초) 보컬처럼 지속음이 많은 소스에서
+            // 그래뉼러 피치시프트 특유의 "지글거리는" 아티팩트가 줄어든다.
+            pitchShift = new Tone.PitchShift({
+                pitch: semitones,
+                windowSize: 0.12,
+            }).toDestination()
             player = new Tone.Player({
                 url: previewUrl,
                 onload: () => {
