@@ -490,8 +490,10 @@ export function RangeTest({
           <div className="text-xs text-muted-foreground">
             {phase === "low" ? "단계 1 / 2 · 낮은 음 녹음 중" : "단계 2 / 2 · 높은 음 녹음 중"}
           </div>
-          <div className="rounded-[10px] bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-600 dark:text-amber-400 w-full">
-            음악·영상 등 주변 소리를 끄고, 마이크에 가까이서 또렷하게 소리 내주세요. 배경 소리가 있으면 측정이 부정확할 수 있어요.
+          <div className="rounded-[10px] bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-600 dark:text-amber-400 w-full leading-relaxed">
+            음악·영상 등 주변 소리를 끄고, 마이크에 가까이서 또렷하게 소리 내주세요.
+            <br />
+            배경 소리가 있으면 측정이 부정확할 수 있어요.
           </div>
           <div className="relative h-40 w-40">
             <div
