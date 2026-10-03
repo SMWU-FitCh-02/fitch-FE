@@ -34,6 +34,7 @@ const LIVE_RMS_TOO_QUIET = 0.015   // 이 아래면 "너무 작아요"
 const LIVE_PEAK_TOO_LOUD = 0.97    // 이 위면 "너무 크거나 깨짐(클리핑)"
 const LIVE_SMOOTHING_ALPHA = 0.15  // 지수이동평균 계수 — 작을수록 더 완만해짐
 const LIVE_HOLD_MS = 400           // 같은 상태가 이만큼 지속돼야 문구를 바꿈(깜빡임 방지)
+const STEP_MIN_VOICED_RATIO = 0.25 // 3초 녹음 중 "소리가 들린" 프레임 비율이 이보다 낮으면 측정 실패로 간주
 
 export function RangeTest({
                             onComplete,
@@ -67,6 +68,8 @@ export function RangeTest({
   const [micNotice, setMicNotice] = React.useState("")
   // 녹음 중 실시간으로 뜨는 음량/노이즈 안내 문구. 측정이 잘 되고 있으면 빈 문자열(= 안 보임)
   const [liveNotice, setLiveNotice] = React.useState("")
+  // 방금 끝난 단계(낮은 음/높은 음)에서 소리가 충분히 안 잡혔으면 true — 다음 단계로 못 넘어가고 재녹음만 가능
+  const [stepMeasureFailed, setStepMeasureFailed] = React.useState(false)
 
   // 가이드 모드 전용
   const [lowStepIdx, setLowStepIdx] = React.useState(LOW_START_INDEX)
@@ -90,6 +93,14 @@ export function RangeTest({
   const rafRef = React.useRef<number | null>(null)
   const smoothedRmsRef = React.useRef(0) // 프레임 단위 순간값 대신 완만하게 누적된 음량(지수이동평균)
   const liveCategoryRef = React.useRef<{ cat: "quiet" | "loud" | "ok"; since: number }>({ cat: "ok", since: 0 })
+  // 현재 단계(낮은 음/높은 음)의 3초 녹음 동안 "소리가 들린" 프레임 비율을 세기 위한 카운터
+  const recordingRef = React.useRef(false)
+  const voicedFramesRef = React.useRef(0)
+  const totalFramesRef = React.useRef(0)
+
+  React.useEffect(() => {
+    recordingRef.current = recording
+  }, [recording])
 
   function getAudioCtx() {
     if (!audioCtxRef.current) {
@@ -190,6 +201,15 @@ export function RangeTest({
                   ? "소리가 너무 크거나 깨지고 있어요. 입을 마이크에서 살짝 떨어뜨려주세요."
                   : ""
       setLiveNotice((prev) => (prev === text ? prev : text))
+    }
+
+    // 지금이 "낮은 음"/"높은 음" 3초 녹음 구간이면, 이 단계에서 소리가 얼마나 잡혔는지 집계한다
+    // (끝난 뒤 voicedFramesRef/totalFramesRef 비율로 "이 단계 측정이 됐는지"를 판단)
+    if (recordingRef.current) {
+      totalFramesRef.current += 1
+      if (instant !== "quiet") {
+        voicedFramesRef.current += 1
+      }
     }
 
     rafRef.current = requestAnimationFrame(monitorLevel)
@@ -319,9 +339,17 @@ export function RangeTest({
 
   // ---- 직접 녹음(기존) 모드 (녹음 + 서버 분석 사용) ----
 
+  // 새 단계(낮은 음/높은 음) 녹음을 시작할 때마다 이전 단계의 음량 집계를 초기화한다
+  function resetStepVoicedCounters() {
+    voicedFramesRef.current = 0
+    totalFramesRef.current = 0
+    setStepMeasureFailed(false)
+  }
+
   async function startClassicStep(p: "low" | "high") {
     setMode("classic")
     setPhase(p)
+    resetStepVoicedCounters()
     setRecording(true)
     if (p === "low") await startRealRecording()
   }
@@ -335,6 +363,13 @@ export function RangeTest({
         if (next >= 100) {
           clearInterval(interval)
           setRecording(false)
+
+          // 이번 3초 동안 소리가 충분히 잡혔는지 비율로 판단 — 너무 낮으면 다음 단계로
+          // 못 넘어가게 막고 이 단계를 다시 녹음하도록 유도한다
+          const total = totalFramesRef.current
+          const voicedRatio = total > 0 ? voicedFramesRef.current / total : 0
+          setStepMeasureFailed(voicedRatio < STEP_MIN_VOICED_RATIO)
+
           if (phase === "low") {
             setClassicLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
           } else if (phase === "high") {
@@ -348,13 +383,16 @@ export function RangeTest({
   }, [recording, phase, mode])
 
   function handleClassicRetry() {
+    resetStepVoicedCounters()
     setProgress(0)
     setRecording(true)
   }
 
   async function handleClassicAdvance() {
+    if (stepMeasureFailed) return // 안전장치 — 측정 실패 상태에선 버튼 자체가 안 보이지만 혹시 몰라 막아둔다
     if (phase === "low") {
       setPhase("high")
+      resetStepVoicedCounters()
       setProgress(0)
       setRecording(true)
     } else if (phase === "high") {
@@ -437,6 +475,7 @@ export function RangeTest({
     setClassicHighIdx(0)
     setProgress(0)
     setRecording(false)
+    setStepMeasureFailed(false)
   }
 
   React.useEffect(() => {
@@ -621,7 +660,11 @@ export function RangeTest({
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold">
-                  {recording ? "녹음 중... 편하게 3초만 유지해주세요" : "녹음 완료"}
+                  {recording
+                      ? "녹음 중... 편하게 3초만 유지해주세요"
+                      : stepMeasureFailed
+                          ? "측정이 잘 안됐어요"
+                          : "녹음 완료"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {phase === "low" ? "가장 낮은 음을 편하게 내주세요" : "가장 높은 음을 편하게 내주세요"}
@@ -647,6 +690,15 @@ export function RangeTest({
                 <p className="text-xs text-muted-foreground">
                   아무 음이나 편하게 &lsquo;아~&rsquo; 하고 3초 정도 유지해주세요. 녹음이 끝나면 버튼이 나타나요.
                 </p>
+            ) : stepMeasureFailed ? (
+                <>
+                  <p className="text-xs font-semibold text-destructive">
+                    소리가 거의 안 잡혔어요. 마이크에 더 가까이서 또렷하게 다시 녹음해주세요.
+                  </p>
+                  <Button variant="brand" size="lg" className="w-full" onClick={handleClassicRetry}>
+                    <RotateCcw className="h-4 w-4" /> 다시 녹음하기
+                  </Button>
+                </>
             ) : (
                 <>
                   <p className="text-xs font-semibold text-primary">
