@@ -32,6 +32,8 @@ const PIANO_SAMPLE_BASE =
 // 실시간 음량 체크 임계값 (AnalyserNode의 time-domain 데이터를 -1~1로 정규화한 기준)
 const LIVE_RMS_TOO_QUIET = 0.015   // 이 아래면 "너무 작아요"
 const LIVE_PEAK_TOO_LOUD = 0.97    // 이 위면 "너무 크거나 깨짐(클리핑)"
+const LIVE_SMOOTHING_ALPHA = 0.15  // 지수이동평균 계수 — 작을수록 더 완만해짐
+const LIVE_HOLD_MS = 400           // 같은 상태가 이만큼 지속돼야 문구를 바꿈(깜빡임 방지)
 
 export function RangeTest({
                             onComplete,
@@ -86,6 +88,8 @@ export function RangeTest({
   const analyserRef = React.useRef<AnalyserNode | null>(null)
   const micSourceRef = React.useRef<MediaStreamAudioSourceNode | null>(null)
   const rafRef = React.useRef<number | null>(null)
+  const smoothedRmsRef = React.useRef(0) // 프레임 단위 순간값 대신 완만하게 누적된 음량(지수이동평균)
+  const liveCategoryRef = React.useRef<{ cat: "quiet" | "loud" | "ok"; since: number }>({ cat: "ok", since: 0 })
 
   function getAudioCtx() {
     if (!audioCtxRef.current) {
@@ -159,12 +163,33 @@ export function RangeTest({
     }
     const rms = Math.sqrt(sumSquares / data.length)
 
-    if (rms < LIVE_RMS_TOO_QUIET) {
-      setLiveNotice("소리가 너무 작아요. 마이크에 더 가까이서 또렷하게 소리 내주세요.")
+    // 순간값은 숨쉬는 순간 등으로 심하게 흔들리므로, 완만하게 누적한 값으로 판정한다
+    smoothedRmsRef.current =
+        smoothedRmsRef.current * (1 - LIVE_SMOOTHING_ALPHA) + rms * LIVE_SMOOTHING_ALPHA
+
+    let instant: "quiet" | "loud" | "ok"
+    if (smoothedRmsRef.current < LIVE_RMS_TOO_QUIET) {
+      instant = "quiet"
     } else if (peak > LIVE_PEAK_TOO_LOUD) {
-      setLiveNotice("소리가 너무 크거나 깨지고 있어요. 입을 마이크에서 살짝 떨어뜨려주세요.")
+      instant = "loud"
     } else {
-      setLiveNotice("")
+      instant = "ok"
+    }
+
+    const now = performance.now()
+    if (instant !== liveCategoryRef.current.cat) {
+      // 상태가 바뀌는 순간을 기록만 해두고, 아래에서 일정 시간 유지됐을 때만 실제로 반영한다
+      liveCategoryRef.current = { cat: instant, since: now }
+    }
+
+    if (now - liveCategoryRef.current.since >= LIVE_HOLD_MS) {
+      const text =
+          instant === "quiet"
+              ? "소리가 너무 작아요. 마이크에 더 가까이서 또렷하게 소리 내주세요."
+              : instant === "loud"
+                  ? "소리가 너무 크거나 깨지고 있어요. 입을 마이크에서 살짝 떨어뜨려주세요."
+                  : ""
+      setLiveNotice((prev) => (prev === text ? prev : text))
     }
 
     rafRef.current = requestAnimationFrame(monitorLevel)
@@ -182,6 +207,8 @@ export function RangeTest({
     }
     micSourceRef.current = null
     analyserRef.current = null
+    smoothedRmsRef.current = 0
+    liveCategoryRef.current = { cat: "ok", since: 0 }
     setLiveNotice("")
   }
 
