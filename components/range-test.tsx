@@ -29,6 +29,10 @@ function shiftDownInHighLadder(note: string, steps: number) {
 const PIANO_SAMPLE_BASE =
     "https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/acoustic_grand_piano-mp3"
 
+// 실시간 음량 체크 임계값 (AnalyserNode의 time-domain 데이터를 -1~1로 정규화한 기준)
+const LIVE_RMS_TOO_QUIET = 0.015   // 이 아래면 "너무 작아요"
+const LIVE_PEAK_TOO_LOUD = 0.97    // 이 위면 "너무 크거나 깨짐(클리핑)"
+
 export function RangeTest({
                             onComplete,
                             initialPhase = "intro",
@@ -59,6 +63,8 @@ export function RangeTest({
   const [phase, setPhase] = React.useState<Phase>(initialPhase)
   const [result, setResult] = React.useState<RangeRecord | null>(null)
   const [micNotice, setMicNotice] = React.useState("")
+  // 녹음 중 실시간으로 뜨는 음량/노이즈 안내 문구. 측정이 잘 되고 있으면 빈 문자열(= 안 보임)
+  const [liveNotice, setLiveNotice] = React.useState("")
 
   // 가이드 모드 전용
   const [lowStepIdx, setLowStepIdx] = React.useState(LOW_START_INDEX)
@@ -75,6 +81,11 @@ export function RangeTest({
   const recordedBlobRef = React.useRef<Blob | null>(null)
   const audioCtxRef = React.useRef<AudioContext | null>(null)
   const pianoBufferCacheRef = React.useRef<Map<string, AudioBuffer>>(new Map())
+
+  // 실시간 음량 모니터링용 (마이크 스트림 분석 전용 — 재생/스피커 출력과는 무관)
+  const analyserRef = React.useRef<AnalyserNode | null>(null)
+  const micSourceRef = React.useRef<MediaStreamAudioSourceNode | null>(null)
+  const rafRef = React.useRef<number | null>(null)
 
   function getAudioCtx() {
     if (!audioCtxRef.current) {
@@ -130,6 +141,50 @@ export function RangeTest({
     }
   }
 
+  // 마이크 입력 볼륨을 매 프레임 측정해서 너무 작거나(무음에 가까움) 너무 크거나(클리핑)
+  // 할 때만 안내 문구를 띄운다. 측정이 잘 되고 있으면 liveNotice를 비워서 아무것도 안 보이게 한다.
+  function monitorLevel() {
+    const analyser = analyserRef.current
+    if (!analyser) return
+
+    const data = new Uint8Array(analyser.fftSize)
+    analyser.getByteTimeDomainData(data)
+
+    let sumSquares = 0
+    let peak = 0
+    for (let i = 0; i < data.length; i++) {
+      const v = (data[i] - 128) / 128
+      sumSquares += v * v
+      peak = Math.max(peak, Math.abs(v))
+    }
+    const rms = Math.sqrt(sumSquares / data.length)
+
+    if (rms < LIVE_RMS_TOO_QUIET) {
+      setLiveNotice("소리가 너무 작아요. 마이크에 더 가까이서 또렷하게 소리 내주세요.")
+    } else if (peak > LIVE_PEAK_TOO_LOUD) {
+      setLiveNotice("소리가 너무 크거나 깨지고 있어요. 입을 마이크에서 살짝 떨어뜨려주세요.")
+    } else {
+      setLiveNotice("")
+    }
+
+    rafRef.current = requestAnimationFrame(monitorLevel)
+  }
+
+  function stopLevelMonitoring() {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    try {
+      micSourceRef.current?.disconnect()
+    } catch {
+      // 이미 끊겼으면 무시
+    }
+    micSourceRef.current = null
+    analyserRef.current = null
+    setLiveNotice("")
+  }
+
   async function startRealRecording() {
     if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
     try {
@@ -143,6 +198,20 @@ export function RangeTest({
       mr.start(1000)
       mediaRecorderRef.current = mr
       setMicNotice("") // 이전 시도에서 떴던 안내 문구가 있다면 성공 시 지워준다
+
+      // 실시간 음량 모니터링 시작 (부가 기능이라 실패해도 녹음 자체는 계속 진행)
+      try {
+        const ctx = getAudioCtx()
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 2048
+        source.connect(analyser)
+        micSourceRef.current = source
+        analyserRef.current = analyser
+        monitorLevel()
+      } catch {
+        // 레벨 모니터링 실패는 무시하고 녹음은 그대로 진행
+      }
     } catch (err) {
       console.error("[range-test] getUserMedia/MediaRecorder 실패:", err)
       setMicNotice("마이크 접근을 허용하지 않아 시뮬레이션 결과로 진행해요.")
@@ -159,6 +228,7 @@ export function RangeTest({
         streamRef.current = null
         recordedBlobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" })
         chunksRef.current = []
+        stopLevelMonitoring()
         resolve()
       }
       try { mr.stop() } catch { resolve() }
@@ -345,6 +415,7 @@ export function RangeTest({
   React.useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop())
+      stopLevelMonitoring()
     }
   }, [])
 
@@ -531,6 +602,14 @@ export function RangeTest({
               </div>
               <WaveBars active={recording} />
             </div>
+
+            {/* 실시간 음량/노이즈 안내 — 잘 측정되고 있으면 아무것도 안 뜸 */}
+            {recording && liveNotice && (
+                <div className="mb-3 rounded-[10px] bg-destructive/10 border border-destructive/30 px-3 py-2 text-[11px] text-destructive leading-relaxed animate-pulse">
+                  {liveNotice}
+                </div>
+            )}
+
             <Progress value={progress} />
           </div>
 
