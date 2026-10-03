@@ -159,8 +159,8 @@ function PreviewButton({
 // Tone.js PitchShift를 거쳐서 들려준다.
 // 포먼트 보정이 없는 피치시프트라 반음 수가 클수록 음색이 변하는(다람쥐/괴물
 // 목소리) 현상이 심해짐. 너무 크게 조정해야 하는 곡은 미리듣기 품질이 떨어져서
-// 오히려 혼란을 줄 수 있으므로, 이 범위를 넘으면 "내 키로 듣기" 버튼 자체를
-// 숨긴다 (일반 미리듣기는 그대로 제공됨).
+// 오히려 혼란을 줄 수 있으므로, 이 범위를 넘으면 실제 조정 버튼 대신
+// "조절 불가" 배지를 보여준다 (일반 미리듣기는 그대로 제공됨).
 const MAX_KEY_ADJUST_SEMITONES = 4
 
 function KeyAdjustButton({
@@ -175,8 +175,24 @@ function KeyAdjustButton({
     const { playingId, state, toggle } = useKeyAdjustPreviewPlayer()
     const isPlaying = playingId === entry.id
 
+    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
+
     if (shift === 0) return null // 이미 내 음역대 안이면 키 조정할 필요 없음
-    if (Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES) return null // 조정 폭이 너무 크면 음질 저하가 심해서 숨김
+
+    if (Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES) {
+        // 조정은 막되, 아무 표시도 없으면 "원래 조정이 필요 없는 곡"과 구분이 안 되므로
+        // 비활성 배지로 "왜 버튼이 없는지"를 알려준다.
+        return (
+            <span
+                className={`inline-flex items-center rounded-full bg-black/50 backdrop-blur text-white/45 font-semibold whitespace-nowrap shrink-0 cursor-default ${sizeClass}`}
+                title={`음역대 차이가 너무 커요 (${shift > 0 ? "+" : ""}${shift}키). 키 조절은 ±${MAX_KEY_ADJUST_SEMITONES}키까지만 지원해요.`}
+            >
+                <Wand2 className={iconClass} />
+                <span>조절 불가</span>
+            </span>
+        )
+    }
 
     async function handleClick(e: React.MouseEvent) {
         e.stopPropagation()
@@ -192,7 +208,6 @@ function KeyAdjustButton({
         toggle(entry.id, data.previewUrl, shift)
     }
 
-    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
     const icon =
         state === "loading" && isPlaying ? (
             <Loader2 className={`${iconClass} animate-spin`} />
@@ -203,7 +218,6 @@ function KeyAdjustButton({
         )
 
     const label = shift > 0 ? `+${shift}키` : `${shift}키`
-    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
 
     return (
         <button
