@@ -264,8 +264,8 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     } else if (shift === 0) {
         headline = "내 음역대에 딱이에요 🎯"
     } else if (tooBig) {
-        headline = "도전곡이에요 🔥"
-        sub = "키 조정은 어려워요"
+        headline = "키 조정이 어려운 곡이에요"
+        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요"
     } else {
         headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
     }
@@ -304,7 +304,14 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     )
 }
 
-export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
+// expandable=false면 행을 눌러도 패널이 펼쳐지지 않는다 (홈 화면 인기차트용).
+export function ChartSongRow({
+                                 entry,
+                                 expandable = true,
+                             }: {
+    entry: ChartEntryWithRange
+    expandable?: boolean
+}) {
     const { chartLikedIds, toggleChartLikeRemote } = useStore()
     const isSaved = chartLikedIds.has(entry.id)
     const stars = useDifficultyStars(entry)
@@ -313,17 +320,21 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
     return (
         <div className="group rounded-[12px] bg-card/70 border border-border/60 p-2.5 transition-colors hover:bg-card">
             <div
-                role="button"
-                tabIndex={0}
-                aria-expanded={open}
-                onClick={() => setOpen((v) => !v)}
-                onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault()
-                        setOpen((v) => !v)
-                    }
-                }}
-                className="flex items-center gap-3 cursor-pointer"
+                role={expandable ? "button" : undefined}
+                tabIndex={expandable ? 0 : undefined}
+                aria-expanded={expandable ? open : undefined}
+                onClick={expandable ? () => setOpen((v) => !v) : undefined}
+                onKeyDown={
+                    expandable
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault()
+                                setOpen((v) => !v)
+                            }
+                        }
+                        : undefined
+                }
+                className={`flex items-center gap-3 ${expandable ? "cursor-pointer" : ""}`}
             >
                 <div className="w-7 text-center text-base font-bold text-muted-foreground">
                     {entry.rank}
@@ -364,11 +375,13 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
                         </button>
                     </div>
                 </div>
-                <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-                />
+                {expandable && (
+                    <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                    />
+                )}
             </div>
-            {open && <KeyAdjustPanel entry={entry} />}
+            {expandable && open && <KeyAdjustPanel entry={entry} />}
         </div>
     )
 }

@@ -1,0 +1,362 @@
+{
+  "total_rechecked": 89,
+  "confirmed_count": 86,
+  "reverted_count": 3,
+  "confirmed": [
+    {
+      "key": "윤하::사건의 지평선",
+      "matched_title": "Event Horizon"
+    },
+    {
+      "key": "폴킴::모든 날, 모든 순간",
+      "matched_title": "Every Day, Every Moment"
+    },
+    {
+      "key": "박효신::야생화",
+      "matched_title": "Wild Flower"
+    },
+    {
+      "key": "검정치마::한시 오분 (1:05)",
+      "matched_title": "1:05"
+    },
+    {
+      "key": "한로로::사랑하게 될 거야",
+      "matched_title": "Landing in Love"
+    },
+    {
+      "key": "나윤권::나였으면(황태자의첫사랑OST)",
+      "matched_title": "나였으면"
+    },
+    {
+      "key": "한로로::입춘",
+      "matched_title": "Let Me Love My Youth"
+    },
+    {
+      "key": "박명수::바다의 왕자",
+      "matched_title": "Prince of the sea"
+    },
+    {
+      "key": "이승철::말리꽃(비천무OST)",
+      "matched_title": "Jasmine"
+    },
+    {
+      "key": "성시경::너의 모든 순간(별에서온그대OST)",
+      "matched_title": "Every moment of you (Instrumental)"
+    },
+    {
+      "key": "에일리::첫눈처럼 너에게 가겠다(도깨비OST)",
+      "matched_title": "I Will Go To You Like the First Snow"
+    },
+    {
+      "key": "먼데이키즈::가을 안부",
+      "matched_title": "When Autumn Comes"
+    },
+    {
+      "key": "태연::만찬가",
+      "matched_title": "Bansanka"
+    },
+    {
+      "key": "김건모::서울의 달",
+      "matched_title": "The Moon of Seoul"
+    },
+    {
+      "key": "빅뱅::붉은 노을",
+      "matched_title": "Sunset Glow"
+    },
+    {
+      "key": "허각::나를 사랑했던 사람아",
+      "matched_title": "The Person Who Once Loved Me (2020 Remastered)"
+    },
+    {
+      "key": "김범수::끝사랑",
+      "matched_title": "Last Love"
+    },
+    {
+      "key": "소녀시대::다시 만난 세계",
+      "matched_title": "Into the New World"
+    },
+    {
+      "key": "폴킴::모든 날, 모든 순간 (Every Day, Every Moment)(키스먼저할까요? OST)",
+      "matched_title": "Every Day, Every Moment"
+    },
+    {
+      "key": "허각(Feat.존박)::행복한 나를",
+      "matched_title": "Happy Me (feat. John Park)"
+    },
+    {
+      "key": "이승철::그런 사람 또 없습니다",
+      "matched_title": "No One Else Like That"
+    },
+    {
+      "key": "다비치::이 사랑(태양의후예OST)",
+      "matched_title": "This Love"
+    },
+    {
+      "key": "검정치마::기다린 만큼, 더(또오해영OST)",
+      "matched_title": "Till The End of Time"
+    },
+    {
+      "key": "김태우::사랑비",
+      "matched_title": "Love Rain"
+    },
+    {
+      "key": "싸이::예술이야",
+      "matched_title": "It's Art"
+    },
+    {
+      "key": "빅뱅::하루하루",
+      "matched_title": "Haru Haru"
+    },
+    {
+      "key": "거북이::빙고",
+      "matched_title": "비행기"
+    },
+    {
+      "key": "코요태::우리의 꿈(원피스 OP)",
+      "matched_title": "Our Dream"
+    },
+    {
+      "key": "빅뱅::뱅뱅뱅 (Bang Bang Bang)",
+      "matched_title": "Bang Bang Bang (Encore) [Live]"
+    },
+    {
+      "key": "싸이(Feat.성시경)::뜨거운 안녕",
+      "matched_title": "Passionate Goodbye (feat. Sung Si Kyung)"
+    },
+    {
+      "key": "아이오아이::갑자기",
+      "matched_title": "Suddenly"
+    },
+    {
+      "key": "김현정::멍",
+      "matched_title": "Bruise"
+    },
+    {
+      "key": "블랙핑크::불장난",
+      "matched_title": "PLAYING WITH FIRE"
+    },
+    {
+      "key": "빅뱅::맨정신",
+      "matched_title": "SOBER"
+    },
+    {
+      "key": "동방신기::주문(MIROTIC)",
+      "matched_title": "MIROTIC"
+    },
+    {
+      "key": "김건모::잘못된 만남",
+      "matched_title": "Wrongful Meeting (2024 Remaster)"
+    },
+    {
+      "key": "소녀시대::소원을 말해봐 (Genie)",
+      "matched_title": "Genie"
+    },
+    {
+      "key": "빅뱅::거짓말",
+      "matched_title": "Lies"
+    },
+    {
+      "key": "다비치(Narr.하하)::사랑과 전쟁",
+      "matched_title": "사랑과 전쟁 (하하 Narration Version)"
+    },
+    {
+      "key": "솔리드::천생연분",
+      "matched_title": "a match made in heaven"
+    },
+    {
+      "key": "블랙핑크::마지막처럼",
+      "matched_title": "As If It's Your Last"
+    },
+    {
+      "key": "코요태::순정",
+      "matched_title": "Pure Love"
+    },
+    {
+      "key": "(여자)아이들::나는 아픈 건 딱 질색이니까",
+      "matched_title": "Fate"
+    },
+    {
+      "key": "싸이::강남스타일",
+      "matched_title": "Gangnam Style"
+    },
+    {
+      "key": "동방신기::풍선(Balloons)",
+      "matched_title": "Balloons"
+    },
+    {
+      "key": "빅뱅::마지막 인사",
+      "matched_title": "Last Farewell"
+    },
+    {
+      "key": "울랄라세션::아름다운 밤",
+      "matched_title": "Beautiful Night"
+    },
+    {
+      "key": "빅뱅::우리 사랑하지 말아요",
+      "matched_title": "LET'S NOT FALL IN LOVE"
+    },
+    {
+      "key": "이선희::인연(동녘바람)",
+      "matched_title": "Destiny"
+    },
+    {
+      "key": "이승철::서쪽 하늘(청연OST)",
+      "matched_title": "The Western Sky"
+    },
+    {
+      "key": "장범준::흔들리는 꽃들 속에서 네 샴푸향이 느껴진거야(멜로가체질OST)",
+      "matched_title": "Your Shampoo Scent in the Flowers (Instrumental)"
+    },
+    {
+      "key": "태연::만약에(쾌도홍길동OST)",
+      "matched_title": "If"
+    },
+    {
+      "key": "손디아::어른(나의아저씨OST)",
+      "matched_title": "Grown Ups"
+    },
+    {
+      "key": "이적::걱정말아요 그대(응답하라1988 OST)",
+      "matched_title": "Don't Worry (From \"Reply 1988, Pt. 2\") [Original Television Soundtrack]"
+    },
+    {
+      "key": "SG워너비::사랑하자(태양의후예OST)",
+      "matched_title": "By My Side"
+    },
+    {
+      "key": "안예은::낮에 뜨는 달(낮에뜨는달 X 안예은)",
+      "matched_title": "The Moon during the Day"
+    },
+    {
+      "key": "성시경::너의 모든 순간(Piano Ver.)(별에서온그대OST)",
+      "matched_title": "Every Moment Of You (Piano Version)"
+    },
+    {
+      "key": "디셈버::돌아올 순 없나요(아이리스OST)",
+      "matched_title": "can't you come back"
+    },
+    {
+      "key": "안예은::야화(야화첩OST)",
+      "matched_title": "Night Flower"
+    },
+    {
+      "key": "린::시간을 거슬러(해를품은달OST)",
+      "matched_title": "Back in Time (Instrumental)"
+    },
+    {
+      "key": "다비치::모르시나요(아이리스Ⅱ OST)",
+      "matched_title": "Don′t You Know"
+    },
+    {
+      "key": "안예은::만개화(화산귀환OST)",
+      "matched_title": "Full Bloom (Inst.)"
+    },
+    {
+      "key": "싸이(Feat.박정현)::어땠을까",
+      "matched_title": "What Would Have Been? (feat. Lena Park)"
+    },
+    {
+      "key": "MC몽(Feat.멜로우)::죽을만큼 아파서",
+      "matched_title": "Sick Enough to Die (feat. Mellow)"
+    },
+    {
+      "key": "양홍원(Feat.Bryn)::아침에",
+      "matched_title": "In the Morning (feat. Bryn)"
+    },
+    {
+      "key": "리쌍::광대",
+      "matched_title": "Clowns"
+    },
+    {
+      "key": "에픽하이::트로트",
+      "matched_title": "Trot"
+    },
+    {
+      "key": "빅나티(서동현)::노스탈지아",
+      "matched_title": "Nostalgia (Band ver.)"
+    },
+    {
+      "key": "리쌍(Feat.정인)::헤어지지 못하는 여자, 떠나가지 못하는 남자",
+      "matched_title": "Can't Breakup Girl, Can't Breakaway Boy (feat. Jung In)"
+    },
+    {
+      "key": "김하온(Prod.지코,크러쉬)::ON to the next",
+      "matched_title": "TICK TOCK (Prod. by ZICO, Crush) [feat. ZICO]"
+    },
+    {
+      "key": "로꼬(Feat.콜드)::시간이 들겠지",
+      "matched_title": "It Takes Time (feat. Colde)"
+    },
+    {
+      "key": "방탄소년단::봄날",
+      "matched_title": "Spring Day"
+    },
+    {
+      "key": "김하온,이병재(Prod. By Groovy Room)::바코드",
+      "matched_title": "Bar Code"
+    },
+    {
+      "key": "MC몽(Feat.허각)::내 생애 가장 행복한 시간",
+      "matched_title": "Greatest Time (feat. Huh Gak)"
+    },
+    {
+      "key": "나얼::바람기억",
+      "matched_title": "Memory Of The Wind"
+    },
+    {
+      "key": "에일리::보여줄게",
+      "matched_title": "I Will Show You"
+    },
+    {
+      "key": "린(Feat.해금)::곰인형",
+      "matched_title": "Teddy Bear"
+    },
+    {
+      "key": "비스트::비가 오는 날엔",
+      "matched_title": "On Rainy Days"
+    },
+    {
+      "key": "정국::Still With You",
+      "matched_title": "Still With You"
+    },
+    {
+      "key": "나얼::같은 시간 속의 너",
+      "matched_title": "Living in the same time"
+    },
+    {
+      "key": "빅뱅::꽃 길",
+      "matched_title": "FLOWER ROAD"
+    },
+    {
+      "key": "디셈버::별이 될께",
+      "matched_title": "Tears in heaven"
+    },
+    {
+      "key": "박효신::숨",
+      "matched_title": "Breath"
+    },
+    {
+      "key": "빅나티(서동현)(Feat.10CM)::정이라고 하자",
+      "matched_title": "Beyond Love (feat. 10cm)"
+    },
+    {
+      "key": "펀치::밤이 되니까",
+      "matched_title": "When Night Is Falling"
+    },
+    {
+      "key": "헤이즈(Feat.신용재)::비도 오고 그래서",
+      "matched_title": "You, Clouds, Rain (feat. Shin Yong Jae)"
+    }
+  ],
+  "reverted": [
+    {
+      "key": "티아라::Day By Day"
+    },
+    {
+      "key": "에픽하이(Feat.송민호,사이먼도미닉,The Quiett)::노땡큐"
+    },
+    {
+      "key": "릴보이(Feat.기리보이,빅나티(서동현))::내일이 오면"
+    }
+  ]
+}
