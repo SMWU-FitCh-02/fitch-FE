@@ -340,7 +340,13 @@ export default function KeyAdjustmentPage() {
                     // 힌트: 같은 가수의 차트/DB 곡(한글 제목). AI가 "Landing in Love = 사랑하게 될 거야"처럼 맞출 수 있게 한다.
                     const hasHangulText = (t: string) => /[가-힣]/.test(t)
                     const known = catalog
-                        .filter((c) => hasHangulText(c.title) && items.some((it) => sameArtist(c.artist, it.artist)))
+                        .filter(
+                            (c) =>
+                                hasHangulText(c.title) &&
+                                // 같은 가수(별칭 목록 기준)이거나, 지금 검색어에 걸린 차트/DB 곡
+                                // (예: "다비치"로 검색했다면 차트의 다비치 곡들 — 별칭 목록에 없는 가수도 힌트가 된다)
+                                (items.some((it) => sameArtist(c.artist, it.artist)) || matchesSearch(q, c.title, c.artist))
+                        )
                         .slice(0, 60)
                         .map((c) => ({ title: c.title, artist: c.artist }))
                     const ko = await api.getKoreanNames(
@@ -349,11 +355,17 @@ export default function KeyAdjustmentPage() {
                     )
                     const names = ko?.items ?? []
                     if (!cancelled && names.length === items.length) {
+                        // 곡이 짝지어져 가수 표기가 바뀐 경우(DAVICHI → 다비치), 같은 가수의 다른 곡에도 같은 표기를 쓴다.
+                        const artistMap = new Map<string, string>()
+                        items.forEach((it, i) => {
+                            const a = names[i].artist
+                            if (a && a !== it.artist) artistMap.set(it.artist, a)
+                        })
                         const withNames = items.map((it, i) => ({
                             ...it,
                             displayTitle: names[i].title || it.title,
-                            // AI가 영문 그대로 돌려줘도, 별칭 목록에 있는 가수면 한글로 바꾼다
-                            displayArtist: koreanArtistName(names[i].artist || it.artist),
+                            // 짝지어진 가수 표기 → 별칭 목록 순으로 한글 표기를 찾는다
+                            displayArtist: koreanArtistName(artistMap.get(it.artist) || names[i].artist || it.artist),
                         }))
                         setRemote(sortRemoteResults(withNames))
                     }
