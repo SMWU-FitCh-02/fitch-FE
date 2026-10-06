@@ -50,6 +50,24 @@ export const ARTIST_ALIAS_GROUPS: string[][] = [
     ["crush", "크러쉬"],
     ["heize", "헤이즈"],
     ["punch", "펀치"],
+    ["hanroro", "한로로"],
+    ["akmu", "악뮤", "악동뮤지션"],
+    ["jannabi", "잔나비"],
+    ["day6", "데이식스"],
+    ["10cm", "십센치"],
+    ["paul kim", "폴킴"],
+    ["younha", "윤하"],
+    ["epik high", "에픽하이"],
+    ["yerin baek", "백예린"],
+    ["the black skirt", "검정치마"],
+    ["bol4", "볼빨간사춘기"],
+    ["melomance", "멜로망스"],
+    ["roy kim", "로이킴"],
+    ["lee hi", "이하이"],
+    ["n.flying", "엔플라잉"],
+    ["lim young woong", "임영웅"],
+    ["jung kook", "jungkook", "정국"],
+    ["jimin", "지민"],
 ]
 
 function normalize(s: string): string {
@@ -70,4 +88,16 @@ export function matchesSearch(query: string, title: string, artist: string): boo
     if (!q) return true
     const haystack = [title, artist, ...aliasTerms(artist)].join(" ").toLowerCase()
     return haystack.includes(q)
+}
+
+// 영어로 등록된 아티스트명을 한글 표기로 바꿔 보여주기 위한 함수.
+// (Apple iTunes 등은 한국 가수도 "IU", "HANRORO"처럼 영문으로만 돌려주는 경우가 많다.)
+// 별칭 그룹에 한글 표기가 있으면 그걸 돌려주고, 없으면 원래 이름 그대로 돌려준다.
+const HANGUL = /[가-힣]/
+export function koreanArtistName(artist: string): string {
+    const a = normalize(artist)
+    if (!a || HANGUL.test(a)) return artist
+    const group = ARTIST_ALIAS_GROUPS.find((g) => g.some((t) => t === a))
+    if (!group) return artist
+    return group.find((t) => HANGUL.test(t)) ?? artist
 }
