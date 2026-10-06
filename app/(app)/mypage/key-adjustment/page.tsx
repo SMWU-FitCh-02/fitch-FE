@@ -100,18 +100,51 @@ export default function KeyAdjustmentPage() {
     const [loading, setLoading] = React.useState(true)
     const [visible, setVisible] = React.useState(PAGE_SIZE)
 
-    // 알림의 "확인하기"로 들어오면 ?q=곡명 으로 검색어를 채워준다.
-    React.useEffect(() => {
-        const q = new URLSearchParams(window.location.search).get("q")
-        if (q) setQuery(q)
-    }, [])
-
     const [mode, setMode] = React.useState<"song" | "mood">("song")
     const [moodInput, setMoodInput] = React.useState("")
     const [aiSearching, setAiSearching] = React.useState(false)
     const [aiError, setAiError] = React.useState("")
     const [aiResults, setAiResults] = React.useState<CatalogItem[] | null>(null)
     const [aiQuery, setAiQuery] = React.useState("")
+
+    // 다른 화면(홈 등)에 갔다가 돌아와도 검색하던 화면을 그대로 유지한다.
+    // sessionStorage라서 앱/탭을 완전히 닫았다가 다시 열면 초기화된다.
+    const [restored, setRestored] = React.useState(false)
+    React.useEffect(() => {
+        try {
+            const raw = sessionStorage.getItem("keyAdjustState")
+            if (raw) {
+                const st = JSON.parse(raw)
+                if (st.mode === "song" || st.mode === "mood") setMode(st.mode)
+                if (typeof st.query === "string") setQuery(st.query)
+                if (typeof st.moodInput === "string") setMoodInput(st.moodInput)
+                if (typeof st.aiQuery === "string") setAiQuery(st.aiQuery)
+                if (Array.isArray(st.aiResults)) setAiResults(st.aiResults)
+                if (typeof st.visible === "number") setVisible(st.visible)
+            }
+        } catch {
+            // 저장소를 못 쓰면 복원만 포기
+        }
+        // 알림의 "확인하기"로 들어오면 ?q=곡명 으로 검색어를 채워준다.
+        const q = new URLSearchParams(window.location.search).get("q")
+        if (q) {
+            setMode("song")
+            setQuery(q)
+        }
+        setRestored(true)
+    }, [])
+
+    React.useEffect(() => {
+        if (!restored) return
+        try {
+            sessionStorage.setItem(
+                "keyAdjustState",
+                JSON.stringify({ mode, query, moodInput, aiQuery, aiResults, visible })
+            )
+        } catch {
+            // 무시
+        }
+    }, [restored, mode, query, moodInput, aiQuery, aiResults, visible])
 
     // 곡 목록: DB(songs) 전체 + TJ 인기차트(전 카테고리) + 멜론 차트 중 DB에 없는 곡을 합친다.
     React.useEffect(() => {

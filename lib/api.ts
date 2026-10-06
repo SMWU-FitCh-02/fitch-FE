@@ -180,6 +180,10 @@ export const api = {
       body: JSON.stringify(songs),
     })
   },
+  // 내가 분석 요청한 곡들 (로그인 필요)
+  getMyAnalysisRequests(): Promise<{ title: string; artist: string; status: string }[]> {
+    return request(`/chart/analysis-requests/mine`)
+  },
   updatePreferredGenres(userId: number, genres: string[]) {
     return request(`/user/${userId}`, {
       method: "PUT",

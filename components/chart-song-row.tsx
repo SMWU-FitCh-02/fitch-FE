@@ -8,6 +8,7 @@ import { noteToMidi } from "@/lib/songs"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { usePreviewPlayer } from "@/lib/audio-preview"
 import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
+import { stopOtherPreviews } from "@/lib/preview-bus"
 import { api, buildSongKey } from "@/lib/api"
 import { addWatch } from "@/lib/analysis-watch"
 
@@ -231,6 +232,15 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     const adjPlaying = keyPlayer.playingId === entry.id
     const adjLoading = adjPlaying && keyPlayer.state === "loading"
 
+    // 패널이 닫히면(=이 컴포넌트가 사라지면) 이 곡의 소리도 같이 끈다.
+    const playingRef = React.useRef(false)
+    playingRef.current = origPlaying || adjPlaying
+    React.useEffect(() => {
+        return () => {
+            if (playingRef.current) stopOtherPreviews("")
+        }
+    }, [])
+
     // ---- 분석 요청 (음역 정보가 없는 곡) ----
     const songKey = buildSongKey(entry.title, entry.artist)
     const needsAnalysis = !!range && entry.minNote == null
@@ -398,6 +408,28 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     )
 }
 
+// 한 번에 하나의 곡만 펼쳐지도록, 현재 펼쳐진 곡의 id를 모듈 전체에서 공유한다.
+let openRowId: string | null = null
+const openRowListeners = new Set<(id: string | null) => void>()
+function setOpenRowId(id: string | null) {
+    openRowId = id
+    openRowListeners.forEach((l) => l(id))
+}
+function useOpenRow(id: string) {
+    const [current, setCurrent] = React.useState<string | null>(openRowId)
+    React.useEffect(() => {
+        openRowListeners.add(setCurrent)
+        return () => {
+            openRowListeners.delete(setCurrent)
+            // 화면을 벗어나 모든 행이 사라지면 펼침 상태도 초기화
+            if (openRowListeners.size === 0) openRowId = null
+        }
+    }, [])
+    const open = current === id
+    const toggle = React.useCallback(() => setOpenRowId(openRowId === id ? null : id), [id])
+    return { open, toggle }
+}
+
 // expandable=false면 행을 눌러도 패널이 펼쳐지지 않는다 (홈 화면 인기차트용).
 export function ChartSongRow({
                                  entry,
@@ -409,7 +441,7 @@ export function ChartSongRow({
     const { chartLikedIds, toggleChartLikeRemote } = useStore()
     const isSaved = chartLikedIds.has(entry.id)
     const stars = useDifficultyStars(entry)
-    const [open, setOpen] = React.useState(false)
+    const { open, toggle: toggleOpen } = useOpenRow(entry.id)
 
     return (
         <div className="group rounded-[12px] bg-card/70 border border-border/60 p-2.5 transition-colors hover:bg-card">
@@ -417,13 +449,13 @@ export function ChartSongRow({
                 role={expandable ? "button" : undefined}
                 tabIndex={expandable ? 0 : undefined}
                 aria-expanded={expandable ? open : undefined}
-                onClick={expandable ? () => setOpen((v) => !v) : undefined}
+                onClick={expandable ? toggleOpen : undefined}
                 onKeyDown={
                     expandable
                         ? (e) => {
                             if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault()
-                                setOpen((v) => !v)
+                                toggleOpen()
                             }
                         }
                         : undefined
