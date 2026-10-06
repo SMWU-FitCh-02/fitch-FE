@@ -35,6 +35,7 @@ const LIVE_PEAK_TOO_LOUD = 0.97    // 이 위면 "너무 크거나 깨짐(클리
 const LIVE_SMOOTHING_ALPHA = 0.15  // 지수이동평균 계수 — 작을수록 더 완만해짐
 const LIVE_HOLD_MS = 400           // 같은 상태가 이만큼 지속돼야 문구를 바꿈(깜빡임 방지)
 const STEP_MIN_VOICED_RATIO = 0.25 // 3초 녹음 중 "소리가 들린" 프레임 비율이 이보다 낮으면 측정 실패로 간주
+const MONITOR_DEAD_RMS = 0.0005     // 이 단계 내내 음량이 이보다 작으면 '음량 모니터가 먹통'(아이폰에서 가끔 발생)으로 보고 실패 판정에서 제외
 
 export function RangeTest({
                             onComplete,
@@ -70,6 +71,7 @@ export function RangeTest({
   const [liveNotice, setLiveNotice] = React.useState("")
   // 방금 끝난 단계(낮은 음/높은 음)에서 소리가 충분히 안 잡혔으면 true — 다음 단계로 못 넘어가고 재녹음만 가능
   const [stepMeasureFailed, setStepMeasureFailed] = React.useState(false)
+  const [monitorDiag, setMonitorDiag] = React.useState("")
   // 분석이 실패했을 때 "왜 실패했는지"를 화면에 같이 보여주기 위한 문구
   const [failReason, setFailReason] = React.useState("")
 
@@ -99,6 +101,7 @@ export function RangeTest({
   const recordingRef = React.useRef(false)
   const voicedFramesRef = React.useRef(0)
   const totalFramesRef = React.useRef(0)
+  const stepMaxRmsRef = React.useRef(0) // 이 단계에서 관측된 가장 큰 음량(모니터가 살아있는지 확인용)
 
   React.useEffect(() => {
     recordingRef.current = recording
@@ -208,6 +211,7 @@ export function RangeTest({
     // 지금이 "낮은 음"/"높은 음" 3초 녹음 구간이면, 이 단계에서 소리가 얼마나 잡혔는지 집계한다
     // (끝난 뒤 voicedFramesRef/totalFramesRef 비율로 "이 단계 측정이 됐는지"를 판단)
     if (recordingRef.current) {
+      stepMaxRmsRef.current = Math.max(stepMaxRmsRef.current, rms)
       totalFramesRef.current += 1
       if (instant !== "quiet") {
         voicedFramesRef.current += 1
@@ -279,6 +283,10 @@ export function RangeTest({
       // 실시간 음량 모니터링 시작 (부가 기능이라 실패해도 녹음 자체는 계속 진행)
       try {
         const ctx = getAudioCtx()
+        if (ctx.state !== "running") {
+          // iOS는 사용자 동작 직후가 아니면 멈춘 채로 시작할 수 있어 잠깐 기다려 다시 깨워본다
+          await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 700))])
+        }
         const source = ctx.createMediaStreamSource(stream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 2048
@@ -373,7 +381,9 @@ export function RangeTest({
   function resetStepVoicedCounters() {
     voicedFramesRef.current = 0
     totalFramesRef.current = 0
+    stepMaxRmsRef.current = 0
     setStepMeasureFailed(false)
+    setMonitorDiag("")
   }
 
   async function startClassicStep(p: "low" | "high") {
@@ -398,7 +408,19 @@ export function RangeTest({
           // 못 넘어가게 막고 이 단계를 다시 녹음하도록 유도한다
           const total = totalFramesRef.current
           const voicedRatio = total > 0 ? voicedFramesRef.current / total : 0
-          setStepMeasureFailed(voicedRatio < STEP_MIN_VOICED_RATIO)
+          const ctx = audioCtxRef.current
+          const track = streamRef.current?.getAudioTracks()[0]
+          const maxRms = stepMaxRmsRef.current
+          const monitorBlind = maxRms < MONITOR_DEAD_RMS
+          const diag =
+              `ctx=${ctx?.state ?? "none"} rate=${ctx?.sampleRate ?? "-"} ` +
+              `track=${track?.readyState ?? "none"}/${track?.muted ? "muted" : "live"} ` +
+              `max=${maxRms.toFixed(4)} ratio=${voicedRatio.toFixed(2)}${monitorBlind ? " (모니터 먹통)" : ""}`
+          console.log("[range-test] 단계 종료 진단:", diag)
+          setMonitorDiag(diag)
+          // 음량 모니터 자체가 먹통이면(소리가 전혀 안 읽힘) 실제 녹음은 정상일 수 있으므로 여기서 막지 않고
+          // 최종 판단은 서버 분석에 맡긴다
+          setStepMeasureFailed(!monitorBlind && voicedRatio < STEP_MIN_VOICED_RATIO)
 
           if (phase === "low") {
             setClassicLowIdx((i) => Math.min(LOW_LADDER.length - 1, i + 1))
@@ -735,6 +757,9 @@ export function RangeTest({
           </div>
 
           {micNotice && <p className="text-xs text-muted-foreground">{micNotice}</p>}
+          {!recording && monitorDiag && (
+              <p className="text-[10px] text-muted-foreground break-all">진단: {monitorDiag}</p>
+          )}
 
           <div className="w-full space-y-3">
             {recording ? (
