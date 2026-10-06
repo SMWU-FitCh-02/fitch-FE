@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Heart, Play, Pause, Loader2, Wand2 } from "lucide-react"
+import { Heart, Play, Pause, Loader2, Wand2, ChevronDown } from "lucide-react"
 import type { ChartEntry } from "@/lib/itunes"
 import { useStore } from "@/lib/store"
 import { noteToMidi } from "@/lib/songs"
@@ -153,7 +153,7 @@ function PreviewButton({
     )
 }
 
-// "내 키로 듣기" 버튼 — 곡이 내 음역대를 벗어나 있을 때만 보임.
+// "내 키 버전" 버튼 — 곡이 내 음역대를 벗어나 있을 때만 보임.
 // 반음 수(shift)는 computeKeySemitoneShift로 클라이언트에서 바로 계산하고,
 // 재생은 PreviewButton과 같은 previewUrl(fetchArtwork)을 그대로 쓰되
 // Tone.js PitchShift를 거쳐서 들려준다.
@@ -172,9 +172,6 @@ function KeyAdjustButton({
 }) {
     const { profile } = useStore()
     const shift = computeKeySemitoneShift(entry, profile.range)
-    const { playingId, state, toggle } = useKeyAdjustPreviewPlayer()
-    const isPlaying = playingId === entry.id
-
     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
     const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
 
@@ -194,40 +191,116 @@ function KeyAdjustButton({
         )
     }
 
-    async function handleClick(e: React.MouseEvent) {
-        e.stopPropagation()
-        e.preventDefault()
-
-        if (isPlaying) {
-            toggle(entry.id, "", 0) // currentId가 같으면 내부적으로 정지 분기를 타므로 url/semitone은 쓰이지 않음
-            return
-        }
-
-        const data = await fetchArtwork(entry.title, entry.artist)
-        if (!data.previewUrl) return
-        toggle(entry.id, data.previewUrl, shift)
-    }
-
-    const icon =
-        state === "loading" && isPlaying ? (
-            <Loader2 className={`${iconClass} animate-spin`} />
-        ) : isPlaying ? (
-            <Pause className={iconClass} />
-        ) : (
-            <Wand2 className={iconClass} />
-        )
-
+    // 표시 전용 뱃지: 눌러도 재생되지 않고(행 펼침만 동작), 재생은 펼쳐진 패널에서 한다.
     const label = shift > 0 ? `+${shift}키` : `${shift}키`
 
     return (
-        <button
-            onClick={handleClick}
-            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-brand font-semibold whitespace-nowrap hover:bg-black/85 transition-colors shrink-0 ${sizeClass}`}
-            aria-label={isPlaying ? "일시정지" : `내 키로 듣기 (${label})`}
+        <span
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-brand font-semibold whitespace-nowrap shrink-0 ${sizeClass}`}
+            aria-label={`추천 키 ${label}`}
         >
-            {icon}
+            <Wand2 className={iconClass} />
             <span>{label}</span>
-        </button>
+        </span>
+    )
+}
+
+// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡/키 조정 음원 재생
+function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
+    const { profile } = useStore()
+    const range = profile.range
+    const shift = computeKeySemitoneShift(entry, range)
+    const preview = usePreviewPlayer()
+    const keyPlayer = useKeyAdjustPreviewPlayer()
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
+    const [loadingOrig, setLoadingOrig] = React.useState(false)
+
+    const hasInfo = entry.minNote != null && entry.maxNote != null && !!range
+    const tooBig = Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES
+    const canAdjust = shift !== 0 && !tooBig
+    const origPlaying = preview.playingId === entry.id
+    const adjPlaying = keyPlayer.playingId === entry.id
+    const adjLoading = adjPlaying && keyPlayer.state === "loading"
+
+    async function getUrl(): Promise<string | null> {
+        if (previewUrl) return previewUrl
+        if (previewUrl === null) return null
+        try {
+            const data = await fetchArtwork(entry.title, entry.artist)
+            setPreviewUrl(data.previewUrl ?? null)
+            return data.previewUrl ?? null
+        } catch {
+            setPreviewUrl(null)
+            return null
+        }
+    }
+
+    async function playOriginal() {
+        if (origPlaying) {
+            preview.toggle(entry.id, "")
+            return
+        }
+        setLoadingOrig(true)
+        const url = await getUrl()
+        setLoadingOrig(false)
+        if (url) preview.toggle(entry.id, url)
+    }
+
+    async function playAdjusted() {
+        if (adjPlaying) {
+            keyPlayer.toggle(entry.id, "", 0)
+            return
+        }
+        const url = await getUrl()
+        if (url) keyPlayer.toggle(entry.id, url, shift)
+    }
+
+    let headline: string
+    let sub = ""
+    if (!range) {
+        headline = "음역대를 재면 추천 키를 알려드려요"
+    } else if (!hasInfo) {
+        headline = "음역 정보가 없는 곡이에요"
+    } else if (shift === 0) {
+        headline = "내 음역대에 딱이에요 🎯"
+    } else if (tooBig) {
+        headline = "도전곡이에요 🔥"
+        sub = "키 조정은 어려워요"
+    } else {
+        headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
+    }
+
+    const btnBase =
+        "inline-flex flex-1 items-center justify-center gap-2 rounded-full h-9 text-xs font-semibold transition-colors"
+
+    return (
+        <div className="mt-2 rounded-[10px] bg-muted/50 border border-border/60 p-3 space-y-3">
+            <div>
+                <div className="text-[11px] text-muted-foreground">추천 키</div>
+                <div className={`text-lg font-extrabold ${canAdjust || shift === 0 ? "text-brand" : "text-muted-foreground"}`}>
+                    {headline}
+                </div>
+                {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+            </div>
+            <div className="flex gap-2">
+                <button
+                    onClick={playOriginal}
+                    className={`${btnBase} bg-black/70 text-primary hover:bg-black/85`}
+                >
+                    {loadingOrig ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    <span>{origPlaying ? "재생 중" : "원곡"}</span>
+                </button>
+                {canAdjust && (
+                    <button
+                        onClick={playAdjusted}
+                        className={`${btnBase} bg-black/70 text-brand hover:bg-black/85`}
+                    >
+                        {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+                        <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
+                    </button>
+                )}
+            </div>
+        </div>
     )
 }
 
@@ -235,49 +308,67 @@ export function ChartSongRow({ entry }: { entry: ChartEntryWithRange }) {
     const { chartLikedIds, toggleChartLikeRemote } = useStore()
     const isSaved = chartLikedIds.has(entry.id)
     const stars = useDifficultyStars(entry)
+    const [open, setOpen] = React.useState(false)
 
     return (
-        <div className="group flex items-center gap-3 rounded-[12px] bg-card/70 border border-border/60 p-2.5 transition-colors hover:bg-card">
-            <div className="w-7 text-center text-base font-bold text-muted-foreground">
-                {entry.rank}
-            </div>
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px]">
-                {entry.artworkUrl ? (
-                    <img
-                        src={entry.artworkUrl}
-                        alt={entry.title}
-                        className="h-full w-full object-cover"
-                    />
-                ) : (
-                    <div className="h-full w-full bg-muted" />
-                )}
-            </div>
-            <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-foreground">{entry.title}</div>
-                <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
-            </div>
-            <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
-                {stars && <DifficultyBadge stars={stars} size="sm" />}
-                <div className="flex items-center gap-1">
-                    <KeyAdjustButton entry={entry} size="sm" />
-                    <PreviewButton entry={entry} size="sm" />
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            toggleChartLikeRemote({
-                                externalId: entry.id,
-                                title: entry.title,
-                                artist: entry.artist,
-                                artworkUrl: entry.artworkUrl || null,
-                            })
-                        }}
-                        className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
-                        aria-label={isSaved ? "좋아요 취소" : "좋아요"}
-                    >
-                        <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
-                    </button>
+        <div className="group rounded-[12px] bg-card/70 border border-border/60 p-2.5 transition-colors hover:bg-card">
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={open}
+                onClick={() => setOpen((v) => !v)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setOpen((v) => !v)
+                    }
+                }}
+                className="flex items-center gap-3 cursor-pointer"
+            >
+                <div className="w-7 text-center text-base font-bold text-muted-foreground">
+                    {entry.rank}
                 </div>
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px]">
+                    {entry.artworkUrl ? (
+                        <img
+                            src={entry.artworkUrl}
+                            alt={entry.title}
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        <div className="h-full w-full bg-muted" />
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-foreground">{entry.title}</div>
+                    <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
+                </div>
+                <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
+                    {stars && <DifficultyBadge stars={stars} size="sm" />}
+                    <div className="flex items-center gap-1">
+                        <KeyAdjustButton entry={entry} size="sm" />
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                toggleChartLikeRemote({
+                                    externalId: entry.id,
+                                    title: entry.title,
+                                    artist: entry.artist,
+                                    artworkUrl: entry.artworkUrl || null,
+                                })
+                            }}
+                            className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
+                            aria-label={isSaved ? "좋아요 취소" : "좋아요"}
+                        >
+                            <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                        </button>
+                    </div>
+                </div>
+                <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                />
             </div>
+            {open && <KeyAdjustPanel entry={entry} />}
         </div>
     )
 }
