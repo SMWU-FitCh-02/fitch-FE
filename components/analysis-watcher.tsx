@@ -59,11 +59,14 @@ export function AnalysisWatcher() {
     if (toasts.length === 0) return null
 
     return (
-        <div className="fixed inset-x-0 top-3 z-50 mx-auto flex max-w-md flex-col gap-2 px-4 pointer-events-none">
+        <div
+            className="fixed inset-x-0 z-[100] mx-auto flex max-w-md flex-col gap-2 px-4 pointer-events-none"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
+        >
             {toasts.map((t) => (
                 <div
                     key={t.id}
-                    className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-primary/30 bg-surface-elevated/95 p-3 shadow-lg backdrop-blur"
+                    className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-primary/30 bg-card p-3 shadow-2xl shadow-black/50"
                 >
                     <Sparkles className="h-5 w-5 shrink-0 text-primary" />
                     <div className="min-w-0 flex-1">
@@ -72,6 +75,9 @@ export function AnalysisWatcher() {
                         </div>
                         <div className="truncate text-xs text-muted-foreground">
                             {t.title} · {t.artist}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-primary/80">
+                            {t.ok ? "보관함 > 분석 요청에서도 볼 수 있어요" : "보관함 > 분석 요청에서 다시 요청할 수 있어요"}
                         </div>
                     </div>
                     {t.ok && (

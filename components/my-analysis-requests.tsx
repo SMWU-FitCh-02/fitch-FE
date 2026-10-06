@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Loader2, CheckCircle2, AlertCircle, Mic2 } from "lucide-react"
+import { Loader2, AlertCircle, Mic2 } from "lucide-react"
 import { api, buildSongKey } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { ChartSongRow, type ChartEntryWithRange } from "@/components/chart-song-row"
@@ -39,21 +39,19 @@ function RequestRow({ req, index, range }: { req: Req; index: number; range?: Ra
     return (
         <div>
             <ChartSongRow entry={entry} />
-            <div className="px-3 -mt-1 mb-1 text-[11px] flex items-center gap-1">
-                {done ? (
-                    <span className="text-primary flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3" /> 분석 완료
-          </span>
-                ) : req.status === "FAILED" ? (
-                    <span className="text-destructive flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" /> 분석에 실패했어요 (곡을 열어 다시 요청할 수 있어요)
-          </span>
-                ) : (
-                    <span className="text-muted-foreground flex items-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" /> 분석 중이에요
-          </span>
-                )}
-            </div>
+            {!done && (
+                <div className="mt-1.5 px-1">
+                    {req.status === "FAILED" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2.5 py-1 text-[11px] font-semibold text-destructive">
+              <AlertCircle className="h-3 w-3" /> 분석 실패 · 곡을 열어 다시 요청해보세요
+            </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">
+              <Loader2 className="h-3 w-3 animate-spin" /> 분석 중이에요
+            </span>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
