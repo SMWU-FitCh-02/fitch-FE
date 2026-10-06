@@ -9,6 +9,7 @@ import type { RangeRecord } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { noteToKorean } from "@/lib/songs"
+import { toIsoFromServer } from "@/lib/time"
 
 type Phase = "intro" | "low" | "high" | "analyzing" | "done" | "failed"
 type Mode = "guide" | "classic"
@@ -511,7 +512,7 @@ export function RangeTest({
         }
         if (!cancelled) {
           setResult({
-            testedAt: res.measuredAt || new Date().toISOString(),
+            testedAt: toIsoFromServer(res.measuredAt) || new Date().toISOString(),
             lowestNote: res.minNoteLabel,
             highestNote: res.maxNoteLabel,
             comfortableHigh: shiftDownInHighLadder(res.maxNoteLabel, 2),

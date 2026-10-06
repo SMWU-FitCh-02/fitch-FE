@@ -3,6 +3,7 @@
 import * as React from "react"
 import { api, type ChartLikeEntry } from "@/lib/api"
 import { midiToNote } from "@/lib/songs"
+import { toIsoFromServer } from "@/lib/time"
 
 export type RangeRecord = {
   testedAt: string
@@ -122,7 +123,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                   : {
                     ...p,
                     range: {
-                      testedAt: r.measuredAt ?? new Date().toISOString(),
+                      testedAt: toIsoFromServer(r.measuredAt) ?? new Date().toISOString(),
                       lowestNote: midiToNote(r.minNote),
                       highestNote: midiToNote(r.maxNote),
                       comfortableHigh: midiToNote(r.maxNote),

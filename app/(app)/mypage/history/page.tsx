@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { noteToMidi, noteToKorean } from "@/lib/songs"
 import { Badge } from "@/components/ui/badge"
+import { parseServerDate } from "@/lib/time"
 
 export default function HistoryPage() {
   const { profile } = useStore()
@@ -35,7 +36,7 @@ export default function HistoryPage() {
 
   // chart data
   const points = history.map((h) => ({
-    date: new Date(h.testedAt),
+    date: parseServerDate(h.testedAt),
     lowMidi: noteToMidi(h.lowestNote),
     highMidi: noteToMidi(h.highestNote),
     record: h,
@@ -135,11 +136,12 @@ export default function HistoryPage() {
 
         <h2 className="mt-6 mb-2 px-1 text-sm font-bold">측정 기록</h2>
         <div className="space-y-2">
-          {history.map((h) => (
-              <div key={h.testedAt} className="rounded-[12px] bg-card border border-border/60 p-3.5">
+          {history.map((h, idx) => (
+              <div key={`${h.testedAt}-${idx}`} className="rounded-[12px] bg-card border border-border/60 p-3.5">
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted-foreground">
-                    {new Date(h.testedAt).toLocaleString("ko-KR", {
+                    {parseServerDate(h.testedAt).toLocaleString("ko-KR", {
+                      timeZone: "Asia/Seoul",
                       year: "numeric",
                       month: "numeric",
                       day: "numeric",
