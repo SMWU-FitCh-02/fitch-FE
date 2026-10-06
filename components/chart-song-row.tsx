@@ -167,7 +167,7 @@ function PreviewButton({
 // 포먼트 보정이 없는 피치시프트라 반음 수가 클수록 음색이 변하는(다람쥐/괴물
 // 목소리) 현상이 심해짐. 너무 크게 조정해야 하는 곡은 미리듣기 품질이 떨어져서
 // 오히려 혼란을 줄 수 있으므로, 이 범위를 넘으면 실제 조정 버튼 대신
-// "조절 불가" 배지를 보여준다 (일반 미리듣기는 그대로 제공됨).
+// 흐린 키 배지(예: -7키)를 보여준다 (일반 미리듣기는 그대로 제공됨).
 const MAX_KEY_ADJUST_SEMITONES = 4
 
 function KeyAdjustButton({
@@ -193,7 +193,7 @@ function KeyAdjustButton({
                 title={`음역대 차이가 너무 커요 (${shift > 0 ? "+" : ""}${shift}키). 키 조절은 ±${MAX_KEY_ADJUST_SEMITONES}키까지만 지원해요.`}
             >
                 <Wand2 className={iconClass} />
-                <span>조절 불가</span>
+                <span>{`${shift > 0 ? "+" : ""}${shift}키`}</span>
             </span>
         )
     }
@@ -343,8 +343,9 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     } else if (shift === 0) {
         headline = "내 음역대에 딱이에요 🎯"
     } else if (tooBig) {
-        headline = "키 조정이 어려운 곡이에요"
-        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요"
+        // 조정해야 할 키 수는 알려주되, 차이가 커서 키를 바꾼 음원(내 키 버전)은 제공하지 않는다.
+        headline = `${shift > 0 ? "+" : ""}${shift}키 정도 필요해요`
+        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요. 내 키 버전은 제공하지 않아요"
     } else {
         headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
     }
