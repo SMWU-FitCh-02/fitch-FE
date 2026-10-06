@@ -235,6 +235,12 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
         }
     }
 
+    // 패널이 열리면 미리듣기 주소를 미리 확인해서, 없는 곡이면 버튼 대신 안내를 보여준다.
+    React.useEffect(() => {
+        getUrl()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entry.title, entry.artist])
+
     async function playOriginal() {
         if (origPlaying) {
             preview.toggle(entry.id, "")
@@ -282,24 +288,32 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                 </div>
                 {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </div>
-            <div className="flex gap-2">
-                <button
-                    onClick={playOriginal}
-                    className={`${btnBase} bg-black/70 text-primary hover:bg-black/85`}
-                >
-                    {loadingOrig ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                    <span>{origPlaying ? "재생 중" : "원곡"}</span>
-                </button>
-                {canAdjust && (
+            {previewUrl === null ? (
+                <div className="text-xs text-muted-foreground">
+                    이 곡은 미리듣기를 제공하지 않아요
+                </div>
+            ) : (
+                <div className="flex gap-2">
                     <button
-                        onClick={playAdjusted}
-                        className={`${btnBase} bg-black/70 text-brand hover:bg-black/85`}
+                        onClick={playOriginal}
+                        disabled={previewUrl === undefined}
+                        className={`${btnBase} bg-black/70 text-primary hover:bg-black/85 disabled:opacity-50`}
                     >
-                        {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
-                        <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
+                        {loadingOrig || previewUrl === undefined ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                        <span>{origPlaying ? "재생 중" : "원곡"}</span>
                     </button>
-                )}
-            </div>
+                    {canAdjust && (
+                        <button
+                            onClick={playAdjusted}
+                            disabled={previewUrl === undefined}
+                            className={`${btnBase} bg-black/70 text-brand hover:bg-black/85 disabled:opacity-50`}
+                        >
+                            {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+                            <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

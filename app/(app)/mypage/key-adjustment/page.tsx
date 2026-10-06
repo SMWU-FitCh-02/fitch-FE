@@ -1,405 +1,468 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { Search, Mic, Wand2, Loader2, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
-import { fetchTjChartWithRange, TJ_CATEGORIES } from "@/lib/tjchart"
+import { Heart, Play, Pause, Loader2, Wand2, ChevronDown } from "lucide-react"
+import type { ChartEntry } from "@/lib/itunes"
 import { useStore } from "@/lib/store"
-import { api, buildSongKey } from "@/lib/api"
-import { fetchArtwork } from "@/lib/artwork-cache"
 import { noteToMidi } from "@/lib/songs"
-import { matchesSearch } from "@/lib/artist-aliases"
+import { fetchArtwork } from "@/lib/artwork-cache"
+import { usePreviewPlayer } from "@/lib/audio-preview"
+import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
 
-const PAGE_SIZE = 30
-
-// 멜론 차트(/api/chart)를 가져와서 분석해둔 음역대(minNote/maxNote)를 붙여준다.
-async function fetchMelonWithRange(limit = 100): Promise<CatalogItem[]> {
-    const res = await fetch(`/api/chart?limit=${limit}`)
-    if (!res.ok) throw new Error("melon chart failed")
-    const data = await res.json()
-    const results: any[] = data?.feed?.results ?? []
-    const items: CatalogItem[] = results
-        .filter((r) => r?.name && r?.artistName)
-        .map((r, i) => ({
-            id: `melon-${r.id ?? i}`,
-            title: String(r.name),
-            artist: String(r.artistName),
-        }))
-    try {
-        const rangeMap = await api.getVocalRanges(items.map((e) => ({ title: e.title, artist: e.artist })))
-        for (const it of items) {
-            const r = (rangeMap as any)?.[buildSongKey(it.title, it.artist)]
-            if (r && r.minNote != null && r.maxNote != null) {
-                it.minNote = r.minNote
-                it.maxNote = r.maxNote
-            }
-        }
-    } catch {
-        // 음역대 조회에 실패해도 곡 자체는 검색 대상에 넣는다.
-    }
-    return items
-}
-
-// 두 검색(곡 검색 / 분위기로 찾기)이 같은 곡 목록을 쓰도록 모양을 통일한 항목.
-type CatalogItem = {
-    id: string
-    title: string
-    artist: string
-    artworkUrl?: string
+export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
     maxNote?: number
 }
 
-function dedupeKey(title: string, artist: string) {
-    return `${title}::${artist}`.toLowerCase().replace(/\s+/g, "")
+type VocalRange = { lowestNote: string; highestNote: string }
+
+// 크롤링 곡의 minNote/maxNote(MIDI)와 사용자 음역대를 비교해 1~3점 난이도 산출.
+// 훅 밖(목록 정렬/필터링 등)에서도 쓸 수 있도록 순수 함수로 분리해둠.
+export function computeDifficultyStars(
+    entry: ChartEntryWithRange,
+    range?: VocalRange | null
+): 1 | 2 | 3 | null {
+    if (entry.minNote == null || entry.maxNote == null || !range) return null
+    const userMin = noteToMidi(range.lowestNote)
+    const userMax = noteToMidi(range.highestNote)
+    const overHigh = Math.max(0, entry.maxNote - userMax)
+    const overLow = Math.max(0, userMin - entry.minNote)
+    const totalOver = overHigh + overLow
+    if (totalOver === 0) return 1
+    if (totalOver <= 3) return 2
+    return 3
 }
 
-// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
-function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
-    const [artworkUrl, setArtworkUrl] = React.useState<string | null>(item.artworkUrl || null)
-
-    React.useEffect(() => {
-        if (item.artworkUrl) return
-        let cancelled = false
-        fetchArtwork(item.title, item.artist)
-            .then((data) => {
-                if (!cancelled) setArtworkUrl(data.artworkUrl ?? null)
-            })
-            .catch(() => {})
-        return () => {
-            cancelled = true
-        }
-    }, [item.title, item.artist, item.artworkUrl])
-
-    const entry = {
-        id: item.id,
-        rank: index + 1,
-        title: item.title,
-        artist: item.artist,
-        artworkUrl: artworkUrl ?? "",
-        minNote: item.minNote,
-        maxNote: item.maxNote,
-    } as unknown as ChartEntryWithRange
-
-    return <ChartSongRow entry={entry} />
-}
-
-export default function KeyAdjustmentPage() {
+function useDifficultyStars(entry: ChartEntryWithRange): 1 | 2 | 3 | null {
     const { profile } = useStore()
-    const hasRange = !!profile.range
-    const [query, setQuery] = React.useState("")
-    const [catalog, setCatalog] = React.useState<CatalogItem[]>([])
-    const [loading, setLoading] = React.useState(true)
-    const [visible, setVisible] = React.useState(PAGE_SIZE)
+    return computeDifficultyStars(entry, profile.range)
+}
 
-    const [mode, setMode] = React.useState<"song" | "mood">("song")
-    const [moodInput, setMoodInput] = React.useState("")
-    const [aiSearching, setAiSearching] = React.useState(false)
-    const [aiError, setAiError] = React.useState("")
-    const [aiResults, setAiResults] = React.useState<CatalogItem[] | null>(null)
-    const [aiQuery, setAiQuery] = React.useState("")
+// 곡이 내 음역대를 벗어난 만큼 몇 반음을 조정해야 내 음역대 안에 들어오는지 계산.
+// 0이면 이미 내 음역대 안이라 조정이 필요 없다는 뜻.
+export function computeKeySemitoneShift(
+    entry: ChartEntryWithRange,
+    range?: VocalRange | null
+): number {
+    if (entry.minNote == null || entry.maxNote == null || !range) return 0
+    const userMin = noteToMidi(range.lowestNote)
+    const userMax = noteToMidi(range.highestNote)
+    const overHigh = Math.max(0, entry.maxNote - userMax)
+    const overLow = Math.max(0, userMin - entry.minNote)
+    if (overHigh >= overLow && overHigh > 0) return -overHigh // 고음이 안 닿으면 내려서 맞춤
+    if (overLow > 0) return overLow // 저음이 안 닿으면 올려서 맞춤
+    return 0
+}
 
-    // 곡 목록: DB(songs) 전체 + TJ 인기차트(전 카테고리) + 멜론 차트 중 DB에 없는 곡을 합친다.
-    React.useEffect(() => {
-        if (!hasRange) return
-        let cancelled = false
+// 앨범 커버 위에 올라가는 작은 별 뱃지 (어느 배경에서도 잘 보이도록 어두운 배경 + 색 텍스트)
+function DifficultyBadge({
+                             stars,
+                             className = "",
+                             size = "md",
+                         }: {
+    stars: 1 | 2 | 3
+    className?: string
+    size?: "md" | "sm"
+}) {
+    const color = stars === 1 ? "text-emerald-400" : stars === 2 ? "text-amber-400" : "text-rose-400"
+    const sizeClass = size === "sm" ? "px-1 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[10px]"
+    return (
+        <div
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur font-bold leading-none whitespace-nowrap ${sizeClass} ${color} ${className}`}
+        >
+            {"★".repeat(stars)}
+            <span className="text-white/25">{"☆".repeat(3 - stars)}</span>
+        </div>
+    )
+}
 
-        async function load() {
-            const [songsRes, melonRes, ...tjRes] = await Promise.allSettled([
-                api.getSongs(),
-                fetchMelonWithRange(100),
-                ...TJ_CATEGORIES.map((c) => fetchTjChartWithRange(100, c.value)),
-            ])
-            if (cancelled) return
+// 곡의 30초 미리듣기 재생/일시정지 버튼. previewUrl은 클릭 시점에 lazy하게 가져온다
+// (차트에 곡이 많아서 전부 미리 fetch하면 낭비이기 때문).
+// showLabel=false면 좁은 카드(포디움/타일)용 아이콘 전용 버튼으로 렌더링해서
+// 난이도 뱃지랑 겹치지 않게 한다.
+function PreviewButton({
+                           entry,
+                           size = "md",
+                           showLabel = true,
+                       }: {
+    entry: ChartEntryWithRange
+    size?: "md" | "sm"
+    showLabel?: boolean
+}) {
+    const { playingId, toggle } = usePreviewPlayer()
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined) // undefined=아직 모름, null=없음
+    const [loading, setLoading] = React.useState(false)
+    const isPlaying = playingId === entry.id
 
-            const merged: CatalogItem[] = []
-            const seen = new Set<string>()
+    async function handleClick(e: React.MouseEvent) {
+        e.stopPropagation()
+        e.preventDefault()
 
-            if (songsRes.status === "fulfilled") {
-                for (const s of songsRes.value) {
-                    const raw = s as unknown as { minNote?: number; maxNote?: number }
-                    const key = dedupeKey(s.title, s.artist)
-                    if (seen.has(key)) continue
-                    seen.add(key)
-                    merged.push({
-                        id: `song-${s.songId}`,
-                        title: s.title,
-                        artist: s.artist,
-                        minNote: raw.minNote,
-                        maxNote: raw.maxNote,
-                    })
-                }
-            }
-            for (const r of tjRes) {
-                if (r.status !== "fulfilled") continue
-                for (const e of r.value) {
-                    const key = dedupeKey(e.title, e.artist)
-                    if (seen.has(key)) continue
-                    seen.add(key)
-                    merged.push({
-                        id: e.id,
-                        title: e.title,
-                        artist: e.artist,
-                        artworkUrl: e.artworkUrl || undefined,
-                        minNote: e.minNote,
-                        maxNote: e.maxNote,
-                    })
-                }
-            }
-            if (melonRes.status === "fulfilled") {
-                for (const e of melonRes.value) {
-                    const key = dedupeKey(e.title, e.artist)
-                    if (seen.has(key)) continue
-                    seen.add(key)
-                    merged.push(e)
-                }
-            }
-            setCatalog(merged)
+        if (previewUrl) {
+            toggle(entry.id, previewUrl)
+            return
+        }
+        if (previewUrl === null) return // 이미 찾아봤는데 없었음
+
+        setLoading(true)
+        try {
+            const data = await fetchArtwork(entry.title, entry.artist)
+            setPreviewUrl(data.previewUrl ?? null)
+            if (data.previewUrl) toggle(entry.id, data.previewUrl)
+        } catch {
+            setPreviewUrl(null)
+        } finally {
             setLoading(false)
         }
-
-        load()
-        return () => {
-            cancelled = true
-        }
-    }, [hasRange])
-
-    async function handleAiSearch() {
-        const q = moodInput.trim()
-        if (!q || aiSearching || catalog.length === 0) return
-        setAiSearching(true)
-        setAiError("")
-        try {
-            const { matchedIndices } = await api.searchRecommend(
-                q,
-                catalog.map((c) => ({ title: c.title, artist: c.artist }))
-            )
-            const matched = matchedIndices.map((i) => catalog[i]).filter((c): c is CatalogItem => !!c)
-            setAiResults(matched)
-            setAiQuery(q)
-        } catch {
-            setAiError("AI 검색에 실패했어요. 잠시 후 다시 시도해주세요.")
-        } finally {
-            setAiSearching(false)
-        }
     }
 
-    function clearAi() {
-        setAiResults(null)
-        setAiQuery("")
-        setAiError("")
-    }
+    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
 
-    // 검색어가 없으면 내 음역대에 가까운 곡부터(조정할 키 수 적은 순 → 내 최고음과 가까운 순),
-    // 검색어가 있으면 곡명/가수명으로 거른다.
-    const filtered = React.useMemo(() => {
-        if (query.trim()) {
-            return catalog.filter((c) => matchesSearch(query, c.title, c.artist))
-        }
-        const range = profile.range
-        if (!range) return catalog
-        const userMax = noteToMidi(range.highestNote)
-        const scored = catalog.map((item) => {
-            if (item.minNote == null || item.maxNote == null) return { item, shift: 99, gap: 99 }
-            const shift = Math.abs(
-                computeKeySemitoneShift({ minNote: item.minNote, maxNote: item.maxNote } as ChartEntryWithRange, range)
-            )
-            return { item, shift, gap: Math.abs(item.maxNote - userMax) }
-        })
-        scored.sort((a, b) => a.shift - b.shift || a.gap - b.gap)
-        return scored.map((x) => x.item)
-    }, [query, catalog, profile.range])
+    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+    const icon = loading ? (
+        <Loader2 className={`${iconClass} animate-spin`} />
+    ) : isPlaying ? (
+        <Pause className={iconClass} />
+    ) : (
+        <Play className={`${iconClass} translate-x-[0.5px]`} />
+    )
 
-    const shown = filtered.slice(0, visible)
-
-    if (!hasRange) {
+    if (!showLabel) {
+        const circleSize = size === "sm" ? "h-6 w-6" : "h-7 w-7"
         return (
-            <main className="px-4 pb-6">
-                <header className="px-1 mb-3 text-center">
-                    <h1 className="text-base font-bold">내 키 찾기</h1>
-                    <p className="text-[11px] text-muted-foreground">추천 키를 받아보세요</p>
-                </header>
-                <div className="mt-10 text-center">
-                    <div className="mx-auto h-20 w-20 rounded-full bg-surface/60 border border-border grid place-items-center">
-                        <Mic className="h-9 w-9 text-muted-foreground" />
-                    </div>
-                    <h2 className="mt-4 text-base font-bold">먼저 음역대 측정이 필요해요</h2>
-                    <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">
-                        맞춤 키를 계산하려면 내 음역대 데이터가 필요해요.
-                    </p>
-                    <Button variant="brand" size="lg" className="mt-6 w-full" asChild>
-                        <Link href="/mypage/range-test">음역대 테스트</Link>
-                    </Button>
-                </div>
-            </main>
+            <button
+                onClick={handleClick}
+                className={`inline-flex items-center justify-center rounded-full bg-black/70 backdrop-blur text-primary hover:bg-black/85 transition-colors shrink-0 ${circleSize}`}
+                aria-label={isPlaying ? "일시정지" : "미리듣기"}
+            >
+                {icon}
+            </button>
         )
     }
 
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
     return (
-        <main className="px-4 pb-6">
-            <header className="px-1 mb-3 text-center">
-                <h1 className="text-base font-bold">내 키 찾기</h1>
-                <p className="text-[11px] text-muted-foreground">곡을 눌러 내게 맞는 키를 확인해요</p>
-            </header>
+        <button
+            onClick={handleClick}
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-primary font-semibold whitespace-nowrap hover:bg-black/85 transition-colors shrink-0 ${sizeClass}`}
+            aria-label={isPlaying ? "일시정지" : "미리듣기"}
+        >
+            {icon}
+            <span>{isPlaying ? "재생 중" : "미리듣기"}</span>
+        </button>
+    )
+}
 
-            <div className="grid grid-cols-2 gap-1 rounded-full bg-surface/60 border border-border/60 p-1">
-                {([
-                    ["song", "곡 검색"],
-                    ["mood", "✨ 분위기로 찾기"],
-                ] as const).map(([key, label]) => (
-                    <button
-                        key={key}
-                        type="button"
-                        onClick={() => setMode(key)}
-                        className={`h-9 rounded-full text-sm font-semibold transition-colors ${
-                            mode === key ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
+// "내 키 버전" 버튼 — 곡이 내 음역대를 벗어나 있을 때만 보임.
+// 반음 수(shift)는 computeKeySemitoneShift로 클라이언트에서 바로 계산하고,
+// 재생은 PreviewButton과 같은 previewUrl(fetchArtwork)을 그대로 쓰되
+// Tone.js PitchShift를 거쳐서 들려준다.
+// 포먼트 보정이 없는 피치시프트라 반음 수가 클수록 음색이 변하는(다람쥐/괴물
+// 목소리) 현상이 심해짐. 너무 크게 조정해야 하는 곡은 미리듣기 품질이 떨어져서
+// 오히려 혼란을 줄 수 있으므로, 이 범위를 넘으면 실제 조정 버튼 대신
+// "조절 불가" 배지를 보여준다 (일반 미리듣기는 그대로 제공됨).
+const MAX_KEY_ADJUST_SEMITONES = 4
+
+function KeyAdjustButton({
+                             entry,
+                             size = "md",
+                         }: {
+    entry: ChartEntryWithRange
+    size?: "md" | "sm"
+}) {
+    const { profile } = useStore()
+    const shift = computeKeySemitoneShift(entry, profile.range)
+    const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+    const sizeClass = size === "sm" ? "h-6 pl-1.5 pr-2 text-[9px] gap-1.5" : "h-7 pl-2 pr-2.5 text-[11px] gap-2"
+
+    if (shift === 0) return null // 이미 내 음역대 안이면 키 조정할 필요 없음
+
+    if (Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES) {
+        // 조정은 막되, 아무 표시도 없으면 "원래 조정이 필요 없는 곡"과 구분이 안 되므로
+        // 비활성 배지로 "왜 버튼이 없는지"를 알려준다.
+        return (
+            <span
+                className={`inline-flex items-center rounded-full bg-black/50 backdrop-blur text-white/45 font-semibold whitespace-nowrap shrink-0 cursor-default ${sizeClass}`}
+                title={`음역대 차이가 너무 커요 (${shift > 0 ? "+" : ""}${shift}키). 키 조절은 ±${MAX_KEY_ADJUST_SEMITONES}키까지만 지원해요.`}
+            >
+                <Wand2 className={iconClass} />
+                <span>조절 불가</span>
+            </span>
+        )
+    }
+
+    // 표시 전용 뱃지: 눌러도 재생되지 않고(행 펼침만 동작), 재생은 펼쳐진 패널에서 한다.
+    const label = shift > 0 ? `+${shift}키` : `${shift}키`
+
+    return (
+        <span
+            className={`inline-flex items-center rounded-full bg-black/70 backdrop-blur text-brand font-semibold whitespace-nowrap shrink-0 ${sizeClass}`}
+            aria-label={`추천 키 ${label}`}
+        >
+            <Wand2 className={iconClass} />
+            <span>{label}</span>
+        </span>
+    )
+}
+
+// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡/키 조정 음원 재생
+function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
+    const { profile } = useStore()
+    const range = profile.range
+    const shift = computeKeySemitoneShift(entry, range)
+    const preview = usePreviewPlayer()
+    const keyPlayer = useKeyAdjustPreviewPlayer()
+    const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
+    const [loadingOrig, setLoadingOrig] = React.useState(false)
+
+    const hasInfo = entry.minNote != null && entry.maxNote != null && !!range
+    const tooBig = Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES
+    const canAdjust = shift !== 0 && !tooBig
+    const origPlaying = preview.playingId === entry.id
+    const adjPlaying = keyPlayer.playingId === entry.id
+    const adjLoading = adjPlaying && keyPlayer.state === "loading"
+
+    async function getUrl(): Promise<string | null> {
+        if (previewUrl) return previewUrl
+        if (previewUrl === null) return null
+        try {
+            const data = await fetchArtwork(entry.title, entry.artist)
+            setPreviewUrl(data.previewUrl ?? null)
+            return data.previewUrl ?? null
+        } catch {
+            setPreviewUrl(null)
+            return null
+        }
+    }
+
+    // 패널이 열리면 미리듣기 주소를 미리 확인해서, 없는 곡이면 버튼 대신 안내를 보여준다.
+    React.useEffect(() => {
+        getUrl()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entry.title, entry.artist])
+
+    async function playOriginal() {
+        if (origPlaying) {
+            preview.toggle(entry.id, "")
+            return
+        }
+        setLoadingOrig(true)
+        const url = await getUrl()
+        setLoadingOrig(false)
+        if (url) preview.toggle(entry.id, url)
+    }
+
+    async function playAdjusted() {
+        if (adjPlaying) {
+            keyPlayer.toggle(entry.id, "", 0)
+            return
+        }
+        const url = await getUrl()
+        if (url) keyPlayer.toggle(entry.id, url, shift)
+    }
+
+    let headline: string
+    let sub = ""
+    if (!range) {
+        headline = "음역대를 재면 추천 키를 알려드려요"
+    } else if (!hasInfo) {
+        headline = "음역 정보가 없는 곡이에요"
+    } else if (shift === 0) {
+        headline = "내 음역대에 딱이에요 🎯"
+    } else if (tooBig) {
+        headline = "키 조정이 어려운 곡이에요"
+        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요"
+    } else {
+        headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
+    }
+
+    const btnBase =
+        "inline-flex flex-1 items-center justify-center gap-2 rounded-full h-9 text-xs font-semibold transition-colors"
+
+    return (
+        <div className="mt-2 rounded-[10px] bg-muted/50 border border-border/60 p-3 space-y-3">
+            <div>
+                <div className="text-[11px] text-muted-foreground">추천 키</div>
+                <div className={`text-lg font-extrabold ${canAdjust || shift === 0 ? "text-brand" : "text-muted-foreground"}`}>
+                    {headline}
+                </div>
+                {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </div>
-
-            {mode === "song" ? (
-                <div className="relative mt-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        className="pl-9 pr-9"
-                        placeholder="곡 또는 가수 검색"
-                        value={query}
-                        onChange={(e) => {
-                            setQuery(e.target.value)
-                            setVisible(PAGE_SIZE)
-                        }}
-                    />
-                    {query && (
+            {previewUrl === null ? (
+                <div className="text-xs text-muted-foreground">
+                    이 곡은 미리듣기를 제공하지 않아요
+                </div>
+            ) : (
+                <div className="flex gap-2">
+                    <button
+                        onClick={playOriginal}
+                        disabled={previewUrl === undefined}
+                        className={`${btnBase} bg-black/70 text-primary hover:bg-black/85 disabled:opacity-50`}
+                    >
+                        {loadingOrig || previewUrl === undefined ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                        <span>{origPlaying ? "재생 중" : "원곡"}</span>
+                    </button>
+                    {canAdjust && (
                         <button
-                            type="button"
-                            onClick={() => {
-                                setQuery("")
-                                setVisible(PAGE_SIZE)
+                            onClick={playAdjusted}
+                            disabled={previewUrl === undefined}
+                            className={`${btnBase} bg-black/70 text-brand hover:bg-black/85 disabled:opacity-50`}
+                        >
+                            {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+                            <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// expandable=false면 행을 눌러도 패널이 펼쳐지지 않는다 (홈 화면 인기차트용).
+export function ChartSongRow({
+                                 entry,
+                                 expandable = true,
+                             }: {
+    entry: ChartEntryWithRange
+    expandable?: boolean
+}) {
+    const { chartLikedIds, toggleChartLikeRemote } = useStore()
+    const isSaved = chartLikedIds.has(entry.id)
+    const stars = useDifficultyStars(entry)
+    const [open, setOpen] = React.useState(false)
+
+    return (
+        <div className="group rounded-[12px] bg-card/70 border border-border/60 p-2.5 transition-colors hover:bg-card">
+            <div
+                role={expandable ? "button" : undefined}
+                tabIndex={expandable ? 0 : undefined}
+                aria-expanded={expandable ? open : undefined}
+                onClick={expandable ? () => setOpen((v) => !v) : undefined}
+                onKeyDown={
+                    expandable
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault()
+                                setOpen((v) => !v)
+                            }
+                        }
+                        : undefined
+                }
+                className={`flex items-center gap-3 ${expandable ? "cursor-pointer" : ""}`}
+            >
+                <div className="w-7 text-center text-base font-bold text-muted-foreground">
+                    {entry.rank}
+                </div>
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px]">
+                    {entry.artworkUrl ? (
+                        <img
+                            src={entry.artworkUrl}
+                            alt={entry.title}
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        <div className="h-full w-full bg-muted" />
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-foreground">{entry.title}</div>
+                    <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
+                </div>
+                <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
+                    {stars && <DifficultyBadge stars={stars} size="sm" />}
+                    <div className="flex items-center gap-1">
+                        <KeyAdjustButton entry={entry} size="sm" />
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                toggleChartLikeRemote({
+                                    externalId: entry.id,
+                                    title: entry.title,
+                                    artist: entry.artist,
+                                    artworkUrl: entry.artworkUrl || null,
+                                })
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            aria-label="검색어 지우기"
+                            className="h-9 w-9 grid place-items-center rounded-full hover:bg-muted"
+                            aria-label={isSaved ? "좋아요 취소" : "좋아요"}
                         >
-                            <X className="h-4 w-4" />
-                        </button>
-                    )}
-                </div>
-            ) : (
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault()
-                        handleAiSearch()
-                    }}
-                    className="mt-3"
-                >
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                className="pl-9 pr-9"
-                                placeholder="예) 아이유 좋은날 같은 느낌의 곡"
-                                value={moodInput}
-                                onChange={(e) => setMoodInput(e.target.value)}
-                            />
-                            {moodInput && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMoodInput("")
-                                        clearAi()
-                                    }}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    aria-label="검색어 지우기"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                        <div className="relative shrink-0">
-                            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-brand blur-md opacity-70 animate-pulse pointer-events-none" />
-                            <button
-                                type="submit"
-                                disabled={aiSearching || !moodInput.trim() || catalog.length === 0}
-                                className="relative h-10 w-10 grid place-items-center rounded-2xl bg-gradient-to-br from-primary to-brand text-white shadow-lg shadow-primary/40 disabled:opacity-40 disabled:shadow-none transition-opacity"
-                                aria-label="AI로 비슷한 곡 찾기"
-                            >
-                                {aiSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            )}
-
-            {mode === "mood" && aiResults && (
-                <div className="mt-3">
-                    <p className="text-[11px] text-muted-foreground text-center px-1 mb-2">
-                        AI가 생성한 추천 결과로, 실제와 다를 수 있어요.
-                    </p>
-                    <div className="flex items-center justify-between px-1">
-                <span className="text-sm font-semibold text-primary truncate">
-                  "{aiQuery}" 검색 결과 {aiResults.length}곡
-                </span>
-                        <button onClick={clearAi} className="text-[12px] text-muted-foreground hover:text-foreground shrink-0 ml-2">
-                            지우기
+                            <Heart className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
                         </button>
                     </div>
                 </div>
-            )}
-            {mode === "mood" && aiError && <div className="mt-3 text-xs text-destructive px-1">{aiError}</div>}
+                {expandable && (
+                    <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                    />
+                )}
+            </div>
+            {expandable && open && <KeyAdjustPanel entry={entry} />}
+        </div>
+    )
+}
 
-            {mode === "mood" ? (
-                aiResults == null ? (
-                    <div className="mt-8 text-center text-xs text-muted-foreground px-6">
-                        비슷한 분위기의 곡을 말로 설명해보세요.<br />
-                        {catalog.length > 0 ? `${catalog.length}곡 중에서 찾아드려요.` : "곡 목록을 불러오는 중이에요."}
-                    </div>
-                ) : aiResults.length === 0 ? (
-                    <div className="mt-6 text-center text-xs text-muted-foreground">
-                        검색 결과가 없어요. 다른 검색어로 시도해보세요.
-                    </div>
+export function ChartSongTile({ entry }: { entry: ChartEntryWithRange }) {
+    const stars = useDifficultyStars(entry)
+    return (
+        <div className="w-32 shrink-0">
+            <div className="relative w-32 h-32 overflow-hidden rounded-[12px] border border-border/40">
+                {entry.artworkUrl ? (
+                    <img
+                        src={entry.artworkUrl}
+                        alt={entry.title}
+                        className="object-cover h-full w-full"
+                    />
                 ) : (
-                    <div className="mt-4 space-y-2">
-                        {aiResults.map((c, i) => (
-                            <SearchSongRow key={c.id} item={c} index={i} />
-                        ))}
-                    </div>
-                )
-            ) : (
-                <>
-                    {loading && <div className="mt-6 text-center text-xs text-muted-foreground">곡 목록 불러오는 중...</div>}
+                    <div className="h-full w-full bg-muted" />
+                )}
+                {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
+                <div className="absolute bottom-1.5 left-1.5">
+                    <PreviewButton entry={entry} size="sm" showLabel={false} />
+                </div>
+            </div>
+            <div className="mt-2 truncate text-sm font-semibold">{entry.title}</div>
+            <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
+        </div>
+    )
+}
 
-                    {!loading && filtered.length === 0 && (
-                        <div className="mt-6 text-center text-xs text-muted-foreground">검색 결과가 없어요</div>
-                    )}
+export function ChartPodiumItem({ entry }: { entry: ChartEntryWithRange }) {
+    const { chartLikedIds, toggleChartLikeRemote } = useStore()
+    const isSaved = chartLikedIds.has(entry.id)
+    const stars = useDifficultyStars(entry)
 
-                    {!loading && filtered.length > 0 && (
-                        <div className="mt-3 px-1 text-[11px] text-muted-foreground">
-                            {query.trim() ? `검색 결과 ${filtered.length}곡` : `전체 ${filtered.length}곡 · 내 음역대에 가까운 순`}
-                        </div>
-                    )}
-
-                    <div className="mt-2 space-y-2">
-                        {shown.map((c, i) => (
-                            <SearchSongRow key={c.id} item={c} index={i} />
-                        ))}
-                    </div>
-
-                    {filtered.length > visible && (
-                        <button
-                            type="button"
-                            onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                            className="mt-3 w-full h-10 rounded-full border border-border bg-surface/40 text-sm font-semibold text-muted-foreground hover:text-foreground"
-                        >
-                            더 보기 ({filtered.length - visible}곡 남음)
-                        </button>
-                    )}
-                </>
-            )}
-        </main>
+    return (
+        <div className="relative rounded-[12px] overflow-hidden bg-surface/60 border border-border/60 p-2.5">
+            <div className="absolute top-2 left-2 z-10 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-brand text-primary-foreground grid place-items-center text-xs font-extrabold">
+                {entry.rank}
+            </div>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation()
+                    toggleChartLikeRemote({
+                        externalId: entry.id,
+                        title: entry.title,
+                        artist: entry.artist,
+                        artworkUrl: entry.artworkUrl || null,
+                    })
+                }}
+                className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full bg-black/40 backdrop-blur grid place-items-center"
+                aria-label={isSaved ? "좋아요 취소" : "좋아요"}
+            >
+                <Heart className={`h-3.5 w-3.5 ${isSaved ? "fill-primary text-primary" : "text-white"}`} />
+            </button>
+            <div className="aspect-square relative rounded-[10px] overflow-hidden">
+                {entry.artworkUrl ? (
+                    <img src={entry.artworkUrl} alt={entry.title} className="object-cover h-full w-full" />
+                ) : (
+                    <div className="h-full w-full bg-muted" />
+                )}
+                {stars && <DifficultyBadge stars={stars} className="absolute bottom-1.5 right-1.5" />}
+                <div className="absolute bottom-1.5 left-1.5">
+                    <PreviewButton entry={entry} size="sm" showLabel={false} />
+                </div>
+            </div>
+            <div className="mt-2 text-xs font-bold truncate">{entry.title}</div>
+            <div className="text-[10px] text-muted-foreground truncate">{entry.artist}</div>
+        </div>
     )
 }
