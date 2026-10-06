@@ -70,6 +70,8 @@ export function RangeTest({
   const [liveNotice, setLiveNotice] = React.useState("")
   // 방금 끝난 단계(낮은 음/높은 음)에서 소리가 충분히 안 잡혔으면 true — 다음 단계로 못 넘어가고 재녹음만 가능
   const [stepMeasureFailed, setStepMeasureFailed] = React.useState(false)
+  // 분석이 실패했을 때 "왜 실패했는지"를 화면에 같이 보여주기 위한 문구
+  const [failReason, setFailReason] = React.useState("")
 
   // 가이드 모드 전용
   const [lowStepIdx, setLowStepIdx] = React.useState(LOW_START_INDEX)
@@ -432,19 +434,29 @@ export function RangeTest({
       const hasRealRecording = !!recordedBlobRef.current && recordedBlobRef.current.size > 0
 
       if (!hasRealRecording) {
-        if (!cancelled) setPhase("failed")
+        if (!cancelled) {
+          setFailReason("녹음된 소리가 없어요 (녹음 데이터 0바이트)")
+          setPhase("failed")
+        }
         return
       }
 
       if (!userId) {
-        if (!cancelled) setPhase("failed")
+        if (!cancelled) {
+          setFailReason("로그인 정보를 찾지 못했어요. 로그아웃 후 다시 로그인해주세요")
+          setPhase("failed")
+        }
         return
       }
 
       try {
         const res = await api.uploadVoice(userId, recordedBlobRef.current!, "range-test.webm")
         if (!res.minNoteLabel || !res.maxNoteLabel) {
-          if (!cancelled) setPhase("failed")
+          console.error("[range-test] 서버 응답에 음 정보가 없음:", res)
+          if (!cancelled) {
+            setFailReason("서버가 음역대를 돌려주지 않았어요")
+            setPhase("failed")
+          }
           return
         }
         if (!cancelled) {
@@ -457,8 +469,17 @@ export function RangeTest({
           })
           setPhase("done")
         }
-      } catch {
-        if (!cancelled) setPhase("failed")
+      } catch (err) {
+        console.error("[range-test] 음성 분석 요청 실패:", err)
+        if (!cancelled) {
+          const e = err as { status?: number; message?: string }
+          const size = recordedBlobRef.current ? Math.round(recordedBlobRef.current.size / 1024) : 0
+          const type = recordedBlobRef.current?.type || "알 수 없음"
+          setFailReason(
+              `서버 요청 실패${e?.status ? ` (${e.status})` : ""}${e?.message ? `: ${String(e.message).slice(0, 120)}` : ""} · 녹음 ${size}KB, ${type}`
+          )
+          setPhase("failed")
+        }
       }
     }
 
@@ -476,6 +497,7 @@ export function RangeTest({
     setProgress(0)
     setRecording(false)
     setStepMeasureFailed(false)
+    setFailReason("")
   }
 
   React.useEffect(() => {
@@ -750,6 +772,11 @@ export function RangeTest({
             <div className="mt-1 text-xs text-muted-foreground">
               목소리 분석에 실패했어요. 다시 시도해주세요.
             </div>
+            {failReason && (
+                <div className="mt-3 rounded-[10px] bg-surface/70 border border-border/60 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed break-words">
+                  원인: {failReason}
+                </div>
+            )}
           </div>
           <div className="w-full">
             <Button variant="brand" size="lg" className="w-full" onClick={resetAll}>
