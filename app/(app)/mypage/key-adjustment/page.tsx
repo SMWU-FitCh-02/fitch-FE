@@ -11,7 +11,7 @@ import { useStore } from "@/lib/store"
 import { api, buildSongKey } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { noteToMidi } from "@/lib/songs"
-import { matchesSearch } from "@/lib/artist-aliases"
+import { matchesSearch, koreanArtistName } from "@/lib/artist-aliases"
 
 const PAGE_SIZE = 30
 
@@ -326,7 +326,8 @@ export default function KeyAdjustmentPage() {
                         const withNames = items.map((it, i) => ({
                             ...it,
                             displayTitle: names[i].title || it.title,
-                            displayArtist: names[i].artist || it.artist,
+                            // AI가 영문 그대로 돌려줘도, 별칭 목록에 있는 가수면 한글로 바꾼다
+                            displayArtist: koreanArtistName(names[i].artist || it.artist),
                         }))
                         // 한글로 표기된 곡을 위로 (같은 그룹 안에서는 원래 순서 유지)
                         const korean = withNames.filter((c) => hasHangul(c.displayTitle) || hasHangul(c.displayArtist))
