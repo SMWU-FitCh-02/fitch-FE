@@ -8,19 +8,35 @@ import { Button } from "@/components/ui/button"
 import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
 import { fetchTjChartWithRange } from "@/lib/tjchart"
 import { useStore } from "@/lib/store"
-import { api, type SongResponse } from "@/lib/api"
+import { api } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { noteToMidi } from "@/lib/songs"
 import { matchesSearch } from "@/lib/artist-aliases"
 
-// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를
-// 그대로 쓰기 위해 SongResponse를 ChartEntry 모양으로 바꿔 넘긴다.
-function SearchSongRow({ song, index }: { song: SongResponse; index: number }) {
-    const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
+const PAGE_SIZE = 30
+
+// 두 검색(곡 검색 / 분위기로 찾기)이 같은 곡 목록을 쓰도록 모양을 통일한 항목.
+type CatalogItem = {
+    id: string
+    title: string
+    artist: string
+    artworkUrl?: string
+    minNote?: number
+    maxNote?: number
+}
+
+function dedupeKey(title: string, artist: string) {
+    return `${title}::${artist}`.toLowerCase().replace(/\s+/g, "")
+}
+
+// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
+function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
+    const [artworkUrl, setArtworkUrl] = React.useState<string | null>(item.artworkUrl || null)
 
     React.useEffect(() => {
+        if (item.artworkUrl) return
         let cancelled = false
-        fetchArtwork(song.title, song.artist)
+        fetchArtwork(item.title, item.artist)
             .then((data) => {
                 if (!cancelled) setArtworkUrl(data.artworkUrl ?? null)
             })
@@ -28,17 +44,16 @@ function SearchSongRow({ song, index }: { song: SongResponse; index: number }) {
         return () => {
             cancelled = true
         }
-    }, [song.title, song.artist])
+    }, [item.title, item.artist, item.artworkUrl])
 
-    const raw = song as unknown as { minNote?: number; maxNote?: number }
     const entry = {
-        id: `song-${song.songId}`,
+        id: item.id,
         rank: index + 1,
-        title: song.title,
-        artist: song.artist,
+        title: item.title,
+        artist: item.artist,
         artworkUrl: artworkUrl ?? "",
-        minNote: raw.minNote,
-        maxNote: raw.maxNote,
+        minNote: item.minNote,
+        maxNote: item.maxNote,
     } as unknown as ChartEntryWithRange
 
     return <ChartSongRow entry={entry} />
@@ -48,36 +63,80 @@ export default function KeyAdjustmentPage() {
     const { profile } = useStore()
     const hasRange = !!profile.range
     const [query, setQuery] = React.useState("")
-    const [allSongs, setAllSongs] = React.useState<SongResponse[]>([])
+    const [catalog, setCatalog] = React.useState<CatalogItem[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [visible, setVisible] = React.useState(PAGE_SIZE)
 
-    // AI 자연어 검색 (TJ 인기차트 100곡 중에서 고름). 결과가 있으면 일반 검색 결과 대신 보여준다.
-    const [chartPool, setChartPool] = React.useState<ChartEntryWithRange[]>([])
-    const [aiSearching, setAiSearching] = React.useState(false)
-    const [aiError, setAiError] = React.useState("")
-    const [aiResults, setAiResults] = React.useState<ChartEntryWithRange[] | null>(null)
-    const [aiQuery, setAiQuery] = React.useState("")
     const [mode, setMode] = React.useState<"song" | "mood">("song")
     const [moodInput, setMoodInput] = React.useState("")
+    const [aiSearching, setAiSearching] = React.useState(false)
+    const [aiError, setAiError] = React.useState("")
+    const [aiResults, setAiResults] = React.useState<CatalogItem[] | null>(null)
+    const [aiQuery, setAiQuery] = React.useState("")
+
+    // 곡 목록: DB(songs) 전체 + TJ 인기차트 100곡 중 DB에 없는 곡을 합친다.
+    React.useEffect(() => {
+        if (!hasRange) return
+        let cancelled = false
+
+        async function load() {
+            const [songsRes, chartRes] = await Promise.allSettled([api.getSongs(), fetchTjChartWithRange(100)])
+            if (cancelled) return
+
+            const merged: CatalogItem[] = []
+            const seen = new Set<string>()
+
+            if (songsRes.status === "fulfilled") {
+                for (const s of songsRes.value) {
+                    const raw = s as unknown as { minNote?: number; maxNote?: number }
+                    const key = dedupeKey(s.title, s.artist)
+                    if (seen.has(key)) continue
+                    seen.add(key)
+                    merged.push({
+                        id: `song-${s.songId}`,
+                        title: s.title,
+                        artist: s.artist,
+                        minNote: raw.minNote,
+                        maxNote: raw.maxNote,
+                    })
+                }
+            }
+            if (chartRes.status === "fulfilled") {
+                for (const e of chartRes.value) {
+                    const key = dedupeKey(e.title, e.artist)
+                    if (seen.has(key)) continue
+                    seen.add(key)
+                    merged.push({
+                        id: e.id,
+                        title: e.title,
+                        artist: e.artist,
+                        artworkUrl: e.artworkUrl || undefined,
+                        minNote: e.minNote,
+                        maxNote: e.maxNote,
+                    })
+                }
+            }
+            setCatalog(merged)
+            setLoading(false)
+        }
+
+        load()
+        return () => {
+            cancelled = true
+        }
+    }, [hasRange])
 
     async function handleAiSearch() {
         const q = moodInput.trim()
-        if (!q || aiSearching) return
+        if (!q || aiSearching || catalog.length === 0) return
         setAiSearching(true)
         setAiError("")
         try {
-            let pool = chartPool
-            if (pool.length === 0) {
-                pool = await fetchTjChartWithRange(100)
-                setChartPool(pool)
-            }
             const { matchedIndices } = await api.searchRecommend(
                 q,
-                pool.map((e) => ({ title: e.title, artist: e.artist }))
+                catalog.map((c) => ({ title: c.title, artist: c.artist }))
             )
-            const matched = matchedIndices
-                .map((i) => pool[i])
-                .filter((e): e is ChartEntryWithRange => !!e)
+            const matched = matchedIndices.map((i) => catalog[i]).filter((c): c is CatalogItem => !!c)
             setAiResults(matched)
             setAiQuery(q)
         } catch {
@@ -93,43 +152,27 @@ export default function KeyAdjustmentPage() {
         setAiError("")
     }
 
-    React.useEffect(() => {
-        if (!hasRange) return
-        let cancelled = false
-        api
-            .getSongs()
-            .then((songs) => {
-                if (!cancelled) setAllSongs(songs)
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false)
-            })
-        return () => {
-            cancelled = true
-        }
-    }, [hasRange])
-
+    // 검색어가 없으면 내 음역대에 가까운 곡부터(조정할 키 수 적은 순 → 내 최고음과 가까운 순),
+    // 검색어가 있으면 곡명/가수명으로 거른다.
     const filtered = React.useMemo(() => {
-        if (!query.trim()) {
-            // 검색어가 없을 때: 내 음역대에 가까운 곡부터 (조정할 키 수가 적은 순 → 내 최고음과 가까운 순)
-            const range = profile.range
-            if (!range) return allSongs.slice(0, 30)
-            const userMax = noteToMidi(range.highestNote)
-            const scored = allSongs.map((song) => {
-                const raw = song as unknown as { minNote?: number; maxNote?: number }
-                if (raw.minNote == null || raw.maxNote == null) {
-                    return { song, shift: 99, gap: 99 } // 음역 정보 없는 곡은 맨 뒤로
-                }
-                const shift = Math.abs(
-                    computeKeySemitoneShift({ minNote: raw.minNote, maxNote: raw.maxNote } as ChartEntryWithRange, range)
-                )
-                return { song, shift, gap: Math.abs(raw.maxNote - userMax) }
-            })
-            scored.sort((a, b) => a.shift - b.shift || a.gap - b.gap)
-            return scored.slice(0, 30).map((x) => x.song)
+        if (query.trim()) {
+            return catalog.filter((c) => matchesSearch(query, c.title, c.artist))
         }
-        return allSongs.filter((s) => matchesSearch(query, s.title, s.artist)).slice(0, 20)
-    }, [query, allSongs, profile.range])
+        const range = profile.range
+        if (!range) return catalog
+        const userMax = noteToMidi(range.highestNote)
+        const scored = catalog.map((item) => {
+            if (item.minNote == null || item.maxNote == null) return { item, shift: 99, gap: 99 }
+            const shift = Math.abs(
+                computeKeySemitoneShift({ minNote: item.minNote, maxNote: item.maxNote } as ChartEntryWithRange, range)
+            )
+            return { item, shift, gap: Math.abs(item.maxNote - userMax) }
+        })
+        scored.sort((a, b) => a.shift - b.shift || a.gap - b.gap)
+        return scored.map((x) => x.item)
+    }, [query, catalog, profile.range])
+
+    const shown = filtered.slice(0, visible)
 
     if (!hasRange) {
         return (
@@ -186,12 +229,18 @@ export default function KeyAdjustmentPage() {
                         className="pl-9 pr-9"
                         placeholder="곡 또는 가수 검색"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => {
+                            setQuery(e.target.value)
+                            setVisible(PAGE_SIZE)
+                        }}
                     />
                     {query && (
                         <button
                             type="button"
-                            onClick={() => setQuery("")}
+                            onClick={() => {
+                                setQuery("")
+                                setVisible(PAGE_SIZE)
+                            }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             aria-label="검색어 지우기"
                         >
@@ -234,7 +283,7 @@ export default function KeyAdjustmentPage() {
                             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-brand blur-md opacity-70 animate-pulse pointer-events-none" />
                             <button
                                 type="submit"
-                                disabled={aiSearching || !moodInput.trim()}
+                                disabled={aiSearching || !moodInput.trim() || catalog.length === 0}
                                 className="relative h-10 w-10 grid place-items-center rounded-2xl bg-gradient-to-br from-primary to-brand text-white shadow-lg shadow-primary/40 disabled:opacity-40 disabled:shadow-none transition-opacity"
                                 aria-label="AI로 비슷한 곡 찾기"
                             >
@@ -265,7 +314,8 @@ export default function KeyAdjustmentPage() {
             {mode === "mood" ? (
                 aiResults == null ? (
                     <div className="mt-8 text-center text-xs text-muted-foreground px-6">
-                        비슷한 분위기의 곡을 말로 설명해보세요.<br />인기차트 100곡 중에서 찾아드려요.
+                        비슷한 분위기의 곡을 말로 설명해보세요.<br />
+                        {catalog.length > 0 ? `${catalog.length}곡 중에서 찾아드려요.` : "곡 목록을 불러오는 중이에요."}
                     </div>
                 ) : aiResults.length === 0 ? (
                     <div className="mt-6 text-center text-xs text-muted-foreground">
@@ -273,8 +323,8 @@ export default function KeyAdjustmentPage() {
                     </div>
                 ) : (
                     <div className="mt-4 space-y-2">
-                        {aiResults.map((e, i) => (
-                            <ChartSongRow key={e.id} entry={{ ...e, rank: i + 1 }} />
+                        {aiResults.map((c, i) => (
+                            <SearchSongRow key={c.id} item={c} index={i} />
                         ))}
                     </div>
                 )
@@ -286,11 +336,27 @@ export default function KeyAdjustmentPage() {
                         <div className="mt-6 text-center text-xs text-muted-foreground">검색 결과가 없어요</div>
                     )}
 
-                    <div className="mt-4 space-y-2">
-                        {filtered.map((s, i) => (
-                            <SearchSongRow key={s.songId} song={s} index={i} />
+                    {!loading && filtered.length > 0 && (
+                        <div className="mt-3 px-1 text-[11px] text-muted-foreground">
+                            {query.trim() ? `검색 결과 ${filtered.length}곡` : `전체 ${filtered.length}곡 · 내 음역대에 가까운 순`}
+                        </div>
+                    )}
+
+                    <div className="mt-2 space-y-2">
+                        {shown.map((c, i) => (
+                            <SearchSongRow key={c.id} item={c} index={i} />
                         ))}
                     </div>
+
+                    {filtered.length > visible && (
+                        <button
+                            type="button"
+                            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                            className="mt-3 w-full h-10 rounded-full border border-border bg-surface/40 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                        >
+                            더 보기 ({filtered.length - visible}곡 남음)
+                        </button>
+                    )}
                 </>
             )}
         </main>
