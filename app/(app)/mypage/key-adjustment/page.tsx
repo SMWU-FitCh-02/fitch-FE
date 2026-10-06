@@ -6,14 +6,42 @@ import { Search, Mic, Wand2, Loader2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
-import { fetchTjChartWithRange } from "@/lib/tjchart"
+import { fetchTjChartWithRange, TJ_CATEGORIES } from "@/lib/tjchart"
 import { useStore } from "@/lib/store"
-import { api } from "@/lib/api"
+import { api, buildSongKey } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { noteToMidi } from "@/lib/songs"
 import { matchesSearch } from "@/lib/artist-aliases"
 
 const PAGE_SIZE = 30
+
+// 멜론 차트(/api/chart)를 가져와서 분석해둔 음역대(minNote/maxNote)를 붙여준다.
+async function fetchMelonWithRange(limit = 100): Promise<CatalogItem[]> {
+    const res = await fetch(`/api/chart?limit=${limit}`)
+    if (!res.ok) throw new Error("melon chart failed")
+    const data = await res.json()
+    const results: any[] = data?.feed?.results ?? []
+    const items: CatalogItem[] = results
+        .filter((r) => r?.name && r?.artistName)
+        .map((r, i) => ({
+            id: `melon-${r.id ?? i}`,
+            title: String(r.name),
+            artist: String(r.artistName),
+        }))
+    try {
+        const rangeMap = await api.getVocalRanges(items.map((e) => ({ title: e.title, artist: e.artist })))
+        for (const it of items) {
+            const r = (rangeMap as any)?.[buildSongKey(it.title, it.artist)]
+            if (r && r.minNote != null && r.maxNote != null) {
+                it.minNote = r.minNote
+                it.maxNote = r.maxNote
+            }
+        }
+    } catch {
+        // 음역대 조회에 실패해도 곡 자체는 검색 대상에 넣는다.
+    }
+    return items
+}
 
 // 두 검색(곡 검색 / 분위기로 찾기)이 같은 곡 목록을 쓰도록 모양을 통일한 항목.
 type CatalogItem = {
@@ -74,13 +102,17 @@ export default function KeyAdjustmentPage() {
     const [aiResults, setAiResults] = React.useState<CatalogItem[] | null>(null)
     const [aiQuery, setAiQuery] = React.useState("")
 
-    // 곡 목록: DB(songs) 전체 + TJ 인기차트 100곡 중 DB에 없는 곡을 합친다.
+    // 곡 목록: DB(songs) 전체 + TJ 인기차트(전 카테고리) + 멜론 차트 중 DB에 없는 곡을 합친다.
     React.useEffect(() => {
         if (!hasRange) return
         let cancelled = false
 
         async function load() {
-            const [songsRes, chartRes] = await Promise.allSettled([api.getSongs(), fetchTjChartWithRange(100)])
+            const [songsRes, melonRes, ...tjRes] = await Promise.allSettled([
+                api.getSongs(),
+                fetchMelonWithRange(100),
+                ...TJ_CATEGORIES.map((c) => fetchTjChartWithRange(100, c.value)),
+            ])
             if (cancelled) return
 
             const merged: CatalogItem[] = []
@@ -101,8 +133,9 @@ export default function KeyAdjustmentPage() {
                     })
                 }
             }
-            if (chartRes.status === "fulfilled") {
-                for (const e of chartRes.value) {
+            for (const r of tjRes) {
+                if (r.status !== "fulfilled") continue
+                for (const e of r.value) {
                     const key = dedupeKey(e.title, e.artist)
                     if (seen.has(key)) continue
                     seen.add(key)
@@ -114,6 +147,14 @@ export default function KeyAdjustmentPage() {
                         minNote: e.minNote,
                         maxNote: e.maxNote,
                     })
+                }
+            }
+            if (melonRes.status === "fulfilled") {
+                for (const e of melonRes.value) {
+                    const key = dedupeKey(e.title, e.artist)
+                    if (seen.has(key)) continue
+                    seen.add(key)
+                    merged.push(e)
                 }
             }
             setCatalog(merged)
