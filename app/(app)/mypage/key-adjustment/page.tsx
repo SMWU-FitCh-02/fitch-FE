@@ -60,6 +60,9 @@ type CatalogItem = {
     artworkUrl?: string
     minNote?: number
     maxNote?: number
+    // 화면 표시용 한글 표기 (없으면 title/artist 그대로)
+    displayTitle?: string
+    displayArtist?: string
 }
 
 // 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
@@ -84,6 +87,8 @@ function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
         rank: index + 1,
         title: item.title,
         artist: item.artist,
+        displayTitle: item.displayTitle,
+        displayArtist: item.displayArtist,
         artworkUrl: artworkUrl ?? "",
         minNote: item.minNote,
         maxNote: item.maxNote,
@@ -311,6 +316,26 @@ export default function KeyAdjustmentPage() {
                     // 음역대 조회 실패는 무시
                 }
                 if (!cancelled) setRemote(items)
+
+                // 영문으로 온 곡은 AI로 한글 표기를 찾아 바꿔 보여준다 (분석/검색 키는 원래 영문 그대로).
+                try {
+                    const ko = await api.getKoreanNames(items.map((e) => ({ title: e.title, artist: e.artist })))
+                    const names = ko?.items ?? []
+                    if (!cancelled && names.length === items.length) {
+                        const hasHangul = (t: string) => /[가-힣]/.test(t)
+                        const withNames = items.map((it, i) => ({
+                            ...it,
+                            displayTitle: names[i].title || it.title,
+                            displayArtist: names[i].artist || it.artist,
+                        }))
+                        // 한글로 표기된 곡을 위로 (같은 그룹 안에서는 원래 순서 유지)
+                        const korean = withNames.filter((c) => hasHangul(c.displayTitle) || hasHangul(c.displayArtist))
+                        const others = withNames.filter((c) => !(hasHangul(c.displayTitle) || hasHangul(c.displayArtist)))
+                        setRemote([...korean, ...others])
+                    }
+                } catch {
+                    // 한글 표기를 못 받아오면 영문 그대로 보여준다
+                }
             } catch {
                 if (!cancelled) setRemote([])
             } finally {
@@ -327,7 +352,15 @@ export default function KeyAdjustmentPage() {
     const remoteShown = React.useMemo(
         () =>
             remote.filter(
-                (r) => !catalog.some((c) => titleKey(c.title) === titleKey(r.title) && sameArtist(c.artist, r.artist))
+                (r) =>
+                    !catalog.some(
+                        (c) =>
+                            (titleKey(c.title) === titleKey(r.title) && sameArtist(c.artist, r.artist)) ||
+                            // 한글 표기로 바뀐 제목/가수가 차트 곡과 같으면 같은 곡으로 본다
+                            (!!r.displayTitle &&
+                                titleKey(c.title) === titleKey(r.displayTitle) &&
+                                sameArtist(c.artist, r.displayArtist ?? r.artist))
+                    )
             ),
         [remote, catalog]
     )

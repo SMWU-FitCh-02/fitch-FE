@@ -11,10 +11,14 @@ import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
 import { stopOtherPreviews } from "@/lib/preview-bus"
 import { api, buildSongKey } from "@/lib/api"
 import { addWatch } from "@/lib/analysis-watch"
+import { koreanArtistName } from "@/lib/artist-aliases"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
     maxNote?: number
+    // 화면에 보여줄 이름(한글 표기). 분석/검색에는 title/artist(원래 표기)를 그대로 쓴다.
+    displayTitle?: string
+    displayArtist?: string
 }
 
 type VocalRange = { lowestNote: string; highestNote: string }
@@ -477,8 +481,8 @@ export function ChartSongRow({
                     )}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-foreground">{entry.title}</div>
-                    <div className="truncate text-xs text-muted-foreground">{entry.artist}</div>
+                    <div className="truncate text-sm font-semibold text-foreground">{entry.displayTitle ?? entry.title}</div>
+                    <div className="truncate text-xs text-muted-foreground">{entry.displayArtist ?? koreanArtistName(entry.artist)}</div>
                 </div>
                 <div className="flex flex-col items-end justify-center gap-1 h-14 shrink-0">
                     {stars && <DifficultyBadge stars={stars} size="sm" />}

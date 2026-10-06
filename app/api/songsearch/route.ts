@@ -10,10 +10,7 @@ async function searchOnce(term: string, country?: string) {
   url.searchParams.set("media", "music")
   url.searchParams.set("entity", "song")
   url.searchParams.set("limit", "25")
-  if (country) {
-    url.searchParams.set("country", country)
-    url.searchParams.set("lang", "ko_kr") // 가능하면 한글 제목/가수명으로
-  }
+  if (country) url.searchParams.set("country", country)
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -32,9 +29,8 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json({ items: [] })
 
   try {
-    // 한국 스토어(KR) 결과를 먼저, 그다음 전체 결과를 합친다. (KR이 한글 제목/가수명을 줘서 한국곡이 한글로 보인다)
-    const [kr, global] = await Promise.all([searchOnce(q, "KR"), searchOnce(q)])
-    const results = [...kr, ...global]
+    // (한국 스토어 KR 검색은 한글 검색어에서 결과가 비어서 쓰지 않는다. 한글 표기는 화면에서 AI로 따로 붙인다.)
+    const results = await searchOnce(q)
 
     const seen = new Set<string>()
     const items: { id: string; title: string; artist: string; artworkUrl: string | null; previewUrl: string | null }[] = []
