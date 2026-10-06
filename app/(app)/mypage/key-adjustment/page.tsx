@@ -63,6 +63,8 @@ type CatalogItem = {
     // 화면 표시용 한글 표기 (없으면 title/artist 그대로)
     displayTitle?: string
     displayArtist?: string
+    // 실시간 검색(iTunes)에서 장르로 한국 곡이라고 판단된 곡
+    isKorean?: boolean
 }
 
 // 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
@@ -95,6 +97,21 @@ function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
     } as unknown as ChartEntryWithRange
 
     return <ChartSongRow entry={entry} />
+}
+
+// 실시간 검색 결과 정렬: 한국 곡(제목이나 가수가 한글로 표기되는 곡)을 위로,
+// 그 안에서는 이미 분석된 곡(음역대 있음)을 위로. 같은 그룹 안에서는 원래 순서 유지.
+function sortRemoteResults(list: CatalogItem[]): CatalogItem[] {
+    const hasHangul = (t?: string) => !!t && /[가-힣]/.test(t)
+    const isKorean = (c: CatalogItem) =>
+        !!c.isKorean ||
+        hasHangul(c.displayTitle ?? c.title) || hasHangul(c.displayArtist ?? koreanArtistName(c.artist))
+    const hasRange = (c: CatalogItem) => c.minNote != null && c.maxNote != null
+    const rank = (c: CatalogItem) => (isKorean(c) ? 0 : 2) + (hasRange(c) ? 0 : 1)
+    return list
+        .map((c, i) => ({ c, i }))
+        .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
+        .map((x) => x.c)
 }
 
 export default function KeyAdjustmentPage() {
@@ -301,6 +318,7 @@ export default function KeyAdjustmentPage() {
                     title: it.title,
                     artist: it.artist,
                     artworkUrl: it.artworkUrl || undefined,
+                    isKorean: !!it.korean,
                 }))
                 // 이미 분석해둔 곡이면 음역대를 붙인다.
                 try {
@@ -315,7 +333,7 @@ export default function KeyAdjustmentPage() {
                 } catch {
                     // 음역대 조회 실패는 무시
                 }
-                if (!cancelled) setRemote(items)
+                if (!cancelled) setRemote(sortRemoteResults(items))
 
                 // 영문으로 온 곡은 AI로 한글 표기를 찾아 바꿔 보여준다 (분석/검색 키는 원래 영문 그대로).
                 try {
@@ -331,17 +349,13 @@ export default function KeyAdjustmentPage() {
                     )
                     const names = ko?.items ?? []
                     if (!cancelled && names.length === items.length) {
-                        const hasHangul = (t: string) => /[가-힣]/.test(t)
                         const withNames = items.map((it, i) => ({
                             ...it,
                             displayTitle: names[i].title || it.title,
                             // AI가 영문 그대로 돌려줘도, 별칭 목록에 있는 가수면 한글로 바꾼다
                             displayArtist: koreanArtistName(names[i].artist || it.artist),
                         }))
-                        // 한글로 표기된 곡을 위로 (같은 그룹 안에서는 원래 순서 유지)
-                        const korean = withNames.filter((c) => hasHangul(c.displayTitle) || hasHangul(c.displayArtist))
-                        const others = withNames.filter((c) => !(hasHangul(c.displayTitle) || hasHangul(c.displayArtist)))
-                        setRemote([...korean, ...others])
+                        setRemote(sortRemoteResults(withNames))
                     }
                 } catch {
                     // 한글 표기를 못 받아오면 영문 그대로 보여준다
