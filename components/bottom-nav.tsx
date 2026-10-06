@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 const items = [
     { href: "/library", label: "보관함", icon: Heart },
-    { href: "/mypage/key-adjustment", label: "키 조정", icon: Wand2 },
+    { href: "/mypage/key-adjustment", label: "내 키 찾기", icon: Wand2 },
     { href: "/home", label: "홈", icon: Home },
     { href: "/chart", label: "인기차트", icon: TrendingUp },
     { href: "/mypage", label: "마이", icon: User },

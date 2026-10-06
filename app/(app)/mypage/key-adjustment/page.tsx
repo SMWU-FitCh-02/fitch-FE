@@ -3,14 +3,14 @@
 import * as React from "react"
 import Link from "next/link"
 import { Search, Mic, Wand2, Loader2, X } from "lucide-react"
-import { PageHeader } from "@/components/page-header"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChartSongRow, type ChartEntryWithRange } from "@/components/chart-song-row"
+import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
 import { fetchTjChartWithRange } from "@/lib/tjchart"
 import { useStore } from "@/lib/store"
 import { api, type SongResponse } from "@/lib/api"
 import { fetchArtwork } from "@/lib/artwork-cache"
+import { noteToMidi } from "@/lib/songs"
 import { matchesSearch } from "@/lib/artist-aliases"
 
 // 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를
@@ -110,14 +110,34 @@ export default function KeyAdjustmentPage() {
     }, [hasRange])
 
     const filtered = React.useMemo(() => {
-        if (!query.trim()) return allSongs.slice(0, 30)
+        if (!query.trim()) {
+            // 검색어가 없을 때: 내 음역대에 가까운 곡부터 (조정할 키 수가 적은 순 → 내 최고음과 가까운 순)
+            const range = profile.range
+            if (!range) return allSongs.slice(0, 30)
+            const userMax = noteToMidi(range.highestNote)
+            const scored = allSongs.map((song) => {
+                const raw = song as unknown as { minNote?: number; maxNote?: number }
+                if (raw.minNote == null || raw.maxNote == null) {
+                    return { song, shift: 99, gap: 99 } // 음역 정보 없는 곡은 맨 뒤로
+                }
+                const shift = Math.abs(
+                    computeKeySemitoneShift({ minNote: raw.minNote, maxNote: raw.maxNote } as ChartEntryWithRange, range)
+                )
+                return { song, shift, gap: Math.abs(raw.maxNote - userMax) }
+            })
+            scored.sort((a, b) => a.shift - b.shift || a.gap - b.gap)
+            return scored.slice(0, 30).map((x) => x.song)
+        }
         return allSongs.filter((s) => matchesSearch(query, s.title, s.artist)).slice(0, 20)
-    }, [query, allSongs])
+    }, [query, allSongs, profile.range])
 
     if (!hasRange) {
         return (
             <main className="px-4 pb-6">
-                <PageHeader title="키 조정" subtitle="추천 키를 받아보세요" />
+                <header className="px-1 mb-3 text-center">
+                    <h1 className="text-base font-bold">내 키 찾기</h1>
+                    <p className="text-[11px] text-muted-foreground">추천 키를 받아보세요</p>
+                </header>
                 <div className="mt-10 text-center">
                     <div className="mx-auto h-20 w-20 rounded-full bg-surface/60 border border-border grid place-items-center">
                         <Mic className="h-9 w-9 text-muted-foreground" />
@@ -136,7 +156,10 @@ export default function KeyAdjustmentPage() {
 
     return (
         <main className="px-4 pb-6">
-            <PageHeader title="키 조정" subtitle="곡을 검색하고 눌러서 추천 키를 확인해요" />
+            <header className="px-1 mb-3 text-center">
+                <h1 className="text-base font-bold">내 키 찾기</h1>
+                <p className="text-[11px] text-muted-foreground">곡을 눌러 내게 맞는 키를 확인해요</p>
+            </header>
 
             <div className="grid grid-cols-2 gap-1 rounded-full bg-surface/60 border border-border/60 p-1">
                 {([
