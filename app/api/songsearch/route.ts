@@ -10,7 +10,10 @@ async function searchOnce(term: string, country?: string) {
   url.searchParams.set("media", "music")
   url.searchParams.set("entity", "song")
   url.searchParams.set("limit", "25")
-  if (country) url.searchParams.set("country", country)
+  if (country) {
+    url.searchParams.set("country", country)
+    url.searchParams.set("lang", "ko_kr") // 가능하면 한글 제목/가수명으로
+  }
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -29,12 +32,12 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json({ items: [] })
 
   try {
-    // country=KR이 한글 검색어에서 0건을 돌려주는 경우가 있어 country 없는 검색을 먼저 한다.
-    let results = await searchOnce(q)
-    if (results.length === 0) results = await searchOnce(q, "KR")
+    // 한국 스토어(KR) 결과를 먼저, 그다음 전체 결과를 합친다. (KR이 한글 제목/가수명을 줘서 한국곡이 한글로 보인다)
+    const [kr, global] = await Promise.all([searchOnce(q, "KR"), searchOnce(q)])
+    const results = [...kr, ...global]
 
     const seen = new Set<string>()
-    const items = []
+    const items: { id: string; title: string; artist: string; artworkUrl: string | null; previewUrl: string | null }[] = []
     for (const r of results) {
       const title = String(r.trackName ?? "").trim()
       const artist = String(r.artistName ?? "").trim()
@@ -50,7 +53,13 @@ export async function GET(req: NextRequest) {
         previewUrl: r.previewUrl ?? null,
       })
     }
-    return NextResponse.json({ items })
+    // 한글이 들어간 곡(제목 또는 가수)을 위로. 같은 그룹 안에서는 원래 순서 유지.
+    const hasHangul = (t: string) => /[가-힣]/.test(t)
+    const ordered = [
+      ...items.filter((i) => hasHangul(i.title) || hasHangul(i.artist)),
+      ...items.filter((i) => !(hasHangul(i.title) || hasHangul(i.artist))),
+    ]
+    return NextResponse.json({ items: ordered })
   } catch {
     return NextResponse.json({ items: [] })
   }

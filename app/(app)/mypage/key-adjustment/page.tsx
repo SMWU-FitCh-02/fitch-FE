@@ -250,7 +250,13 @@ export default function KeyAdjustmentPage() {
     // 검색어가 있으면 곡명/가수명으로 거른다.
     const filtered = React.useMemo(() => {
         if (query.trim()) {
-            return catalog.filter((c) => matchesSearch(query, c.title, c.artist))
+            // 한글이 들어간 곡(한국곡)을 위로, 같은 그룹 안에서는 기존 순서 유지
+            const hasHangul = (t: string) => /[가-힣]/.test(t)
+            const matched = catalog.filter((c) => matchesSearch(query, c.title, c.artist))
+            return [
+                ...matched.filter((c) => hasHangul(c.title) || hasHangul(c.artist)),
+                ...matched.filter((c) => !(hasHangul(c.title) || hasHangul(c.artist))),
+            ]
         }
         const range = profile.range
         if (!range) return catalog
