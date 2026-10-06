@@ -186,12 +186,13 @@ export const api = {
   },
   // 영문으로 뜨는 곡 제목/가수명의 한글 표기를 받아온다 (표시용, 같은 순서로 돌려줌)
   getKoreanNames(
-      items: { title: string; artist: string }[]
+      items: { title: string; artist: string }[],
+      known: { title: string; artist: string }[] = []
   ): Promise<{ items: { title: string; artist: string }[] }> {
     return request(`/recommend/ko-names`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, known }),
     })
   },
   updatePreferredGenres(userId: number, genres: string[]) {

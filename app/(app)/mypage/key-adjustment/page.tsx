@@ -319,7 +319,16 @@ export default function KeyAdjustmentPage() {
 
                 // 영문으로 온 곡은 AI로 한글 표기를 찾아 바꿔 보여준다 (분석/검색 키는 원래 영문 그대로).
                 try {
-                    const ko = await api.getKoreanNames(items.map((e) => ({ title: e.title, artist: e.artist })))
+                    // 힌트: 같은 가수의 차트/DB 곡(한글 제목). AI가 "Landing in Love = 사랑하게 될 거야"처럼 맞출 수 있게 한다.
+                    const hasHangulText = (t: string) => /[가-힣]/.test(t)
+                    const known = catalog
+                        .filter((c) => hasHangulText(c.title) && items.some((it) => sameArtist(c.artist, it.artist)))
+                        .slice(0, 60)
+                        .map((c) => ({ title: c.title, artist: c.artist }))
+                    const ko = await api.getKoreanNames(
+                        items.map((e) => ({ title: e.title, artist: e.artist })),
+                        known
+                    )
                     const names = ko?.items ?? []
                     if (!cancelled && names.length === items.length) {
                         const hasHangul = (t: string) => /[가-힣]/.test(t)
@@ -347,7 +356,7 @@ export default function KeyAdjustmentPage() {
             cancelled = true
             clearTimeout(t)
         }
-    }, [query, mode])
+    }, [query, mode, catalog])
 
     // 이미 위 목록에 있는 곡(가수 표기만 다른 경우 포함)은 실시간 결과에서 뺀다.
     const remoteShown = React.useMemo(
