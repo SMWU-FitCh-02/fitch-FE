@@ -3,12 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Music2, Heart, TrendingUp, User } from "lucide-react"
+import { Home, Wand2, Heart, TrendingUp, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const items = [
     { href: "/library", label: "보관함", icon: Heart },
-    { href: "/recommendations", label: "추천곡", icon: Music2 },
+    { href: "/mypage/key-adjustment", label: "키 조정", icon: Wand2 },
     { href: "/home", label: "홈", icon: Home },
     { href: "/chart", label: "인기차트", icon: TrendingUp },
     { href: "/mypage", label: "마이", icon: User },
@@ -47,9 +47,16 @@ export function BottomNav() {
     const pathname = usePathname() ?? ""
     const shrunk = useShrinkOnScroll()
 
-    const activeIndex = items.findIndex(
-        (it) => pathname === it.href || pathname.startsWith(it.href + "/")
-    )
+    // /mypage/key-adjustment는 "마이"(/mypage)에도 걸리므로, 가장 길게 일치하는 탭 하나만 활성으로 본다.
+    let activeIndex = -1
+    let bestLen = -1
+    items.forEach((it, i) => {
+        const match = pathname === it.href || pathname.startsWith(it.href + "/")
+        if (match && it.href.length > bestLen) {
+            bestLen = it.href.length
+            activeIndex = i
+        }
+    })
 
     return (
         <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.075rem)] pt-2">
@@ -70,8 +77,8 @@ export function BottomNav() {
                         </li>
                     )}
 
-                    {items.map((it) => {
-                        const active = pathname === it.href || pathname.startsWith(it.href + "/")
+                    {items.map((it, i) => {
+                        const active = i === activeIndex
                         const Icon = it.icon
 
                         return (
