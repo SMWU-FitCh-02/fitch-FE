@@ -15,6 +15,15 @@ import { matchesSearch } from "@/lib/artist-aliases"
 
 const PAGE_SIZE = 30
 
+function titleKey(title: string) {
+    return title.toLowerCase().replace(/\s+/g, "")
+}
+
+// 가수 표기만 다른 같은 가수인지 ("아이유" / "IU")
+function sameArtist(a: string, b: string) {
+    return a === b || matchesSearch(a, "", b) || matchesSearch(b, "", a)
+}
+
 // 멜론 차트(/api/chart)를 가져와서 분석해둔 음역대(minNote/maxNote)를 붙여준다.
 async function fetchMelonWithRange(limit = 100): Promise<CatalogItem[]> {
     const res = await fetch(`/api/chart?limit=${limit}`)
@@ -116,14 +125,9 @@ export default function KeyAdjustmentPage() {
             const byTitle = new Map<string, CatalogItem[]>()
 
             function addItem(item: CatalogItem) {
-                const tkey = item.title.toLowerCase().replace(/\s+/g, "")
+                const tkey = titleKey(item.title)
                 const group = byTitle.get(tkey) ?? []
-                const dupIdx = group.findIndex(
-                    (g) =>
-                        g.artist === item.artist ||
-                        matchesSearch(item.artist, "", g.artist) ||
-                        matchesSearch(g.artist, "", item.artist)
-                )
+                const dupIdx = group.findIndex((g) => sameArtist(g.artist, item.artist))
                 if (dupIdx >= 0) {
                     const existing = group[dupIdx]
                     // 기존 항목에 음역 정보가 없고 새 항목에는 있으면 새 쪽으로 교체
@@ -224,6 +228,64 @@ export default function KeyAdjustmentPage() {
     }, [query, catalog, profile.range])
 
     const shown = filtered.slice(0, visible)
+
+    // 실시간 검색: 검색어가 2글자 이상이면 iTunes에서도 찾아서 DB/차트에 없는 곡을 아래에 보여준다.
+    const [remote, setRemote] = React.useState<CatalogItem[]>([])
+    const [remoteLoading, setRemoteLoading] = React.useState(false)
+
+    React.useEffect(() => {
+        const q = query.trim()
+        if (mode !== "song" || q.length < 2) {
+            setRemote([])
+            setRemoteLoading(false)
+            return
+        }
+        let cancelled = false
+        setRemoteLoading(true)
+        const t = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/songsearch?q=${encodeURIComponent(q)}`)
+                const data = await res.json()
+                const items: CatalogItem[] = (data?.items ?? []).map((it: any) => ({
+                    id: it.id,
+                    title: it.title,
+                    artist: it.artist,
+                    artworkUrl: it.artworkUrl || undefined,
+                }))
+                // 이미 분석해둔 곡이면 음역대를 붙인다.
+                try {
+                    const rangeMap = await api.getVocalRanges(items.map((e) => ({ title: e.title, artist: e.artist })))
+                    for (const it of items) {
+                        const r = (rangeMap as any)?.[buildSongKey(it.title, it.artist)]
+                        if (r && r.minNote != null && r.maxNote != null) {
+                            it.minNote = r.minNote
+                            it.maxNote = r.maxNote
+                        }
+                    }
+                } catch {
+                    // 음역대 조회 실패는 무시
+                }
+                if (!cancelled) setRemote(items)
+            } catch {
+                if (!cancelled) setRemote([])
+            } finally {
+                if (!cancelled) setRemoteLoading(false)
+            }
+        }, 450)
+        return () => {
+            cancelled = true
+            clearTimeout(t)
+        }
+    }, [query, mode])
+
+    // 이미 위 목록에 있는 곡(가수 표기만 다른 경우 포함)은 실시간 결과에서 뺀다.
+    const remoteShown = React.useMemo(
+        () =>
+            remote.filter(
+                (r) => !catalog.some((c) => titleKey(c.title) === titleKey(r.title) && sameArtist(c.artist, r.artist))
+            ),
+        [remote, catalog]
+    )
 
     if (!hasRange) {
         return (
@@ -383,7 +445,7 @@ export default function KeyAdjustmentPage() {
                 <>
                     {loading && <div className="mt-6 text-center text-xs text-muted-foreground">곡 목록 불러오는 중...</div>}
 
-                    {!loading && filtered.length === 0 && (
+                    {!loading && filtered.length === 0 && !remoteLoading && remoteShown.length === 0 && (
                         <div className="mt-6 text-center text-xs text-muted-foreground">검색 결과가 없어요</div>
                     )}
 
@@ -407,6 +469,19 @@ export default function KeyAdjustmentPage() {
                         >
                             더 보기 ({filtered.length - visible}곡 남음)
                         </button>
+                    )}
+
+                    {query.trim().length >= 2 && (remoteLoading || remoteShown.length > 0) && (
+                        <div className="mt-6">
+                            <div className="px-1 mb-2 text-[11px] text-muted-foreground">
+                                {remoteLoading ? "더 많은 곡 찾는 중..." : `더 많은 곡 ${remoteShown.length}곡 (실시간 검색)`}
+                            </div>
+                            <div className="space-y-2">
+                                {remoteShown.map((c, i) => (
+                                    <SearchSongRow key={c.id} item={c} index={i} />
+                                ))}
+                            </div>
+                        </div>
                     )}
                 </>
             )}

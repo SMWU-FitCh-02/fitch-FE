@@ -51,8 +51,6 @@ function isTextMatch(a: string, b: string): boolean {
   return x.includes(y) || y.includes(x)
 }
 
-// 수동으로 확인한 유명 아티스트의 한글 활동명 -> 공식 영문 표기 화이트리스트.
-// 아이튠즈 검색 결과가 영문으로만 나오는 경우(흔함)를 대비한 것.
 const ARTIST_ALIASES: Array<[string, string[]]> = [
   ["아이유", ["IU"]],
   ["악뮤", ["AKMU"]],

@@ -266,7 +266,7 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     if (!range) {
         headline = "음역대를 재면 추천 키를 알려드려요"
     } else if (!hasInfo) {
-        headline = "음역 정보가 없는 곡이에요"
+        headline = "아직 분석되지 않은 곡이에요"
     } else if (shift === 0) {
         headline = "내 음역대에 딱이에요 🎯"
     } else if (tooBig) {
