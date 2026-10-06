@@ -163,6 +163,23 @@ export const api = {
       body: JSON.stringify({ query, candidates }),
     })
   },
+  // 분석 안 된 곡의 음역대 분석을 요청 (Mac의 분석 워커가 처리)
+  requestSongAnalysis(song: { title: string; artist: string }): Promise<{ status: string }> {
+    return request(`/chart/analysis-requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(song),
+    })
+  },
+  // songKey -> "PENDING" | "DONE" | "FAILED"
+  getAnalysisStatuses(songs: { title: string; artist: string }[]): Promise<Record<string, string>> {
+    if (songs.length === 0) return Promise.resolve({})
+    return request(`/chart/analysis-requests/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(songs),
+    })
+  },
   updatePreferredGenres(userId: number, genres: string[]) {
     return request(`/user/${userId}`, {
       method: "PUT",
@@ -252,4 +269,3 @@ export async function findUserIdByUsername(username: string, maxId = 50): Promis
   }
   return null
 }
-

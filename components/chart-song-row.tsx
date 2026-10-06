@@ -8,6 +8,7 @@ import { noteToMidi } from "@/lib/songs"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { usePreviewPlayer } from "@/lib/audio-preview"
 import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
+import { api, buildSongKey } from "@/lib/api"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -209,18 +210,71 @@ function KeyAdjustButton({
 function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     const { profile } = useStore()
     const range = profile.range
-    const shift = computeKeySemitoneShift(entry, range)
+    // 분석 요청이 끝나서 새로 알게 된 음역대 (원래 entry에 없던 곡용)
+    const [live, setLive] = React.useState<{ minNote: number; maxNote: number } | null>(null)
+    const eff: ChartEntryWithRange = {
+        ...entry,
+        minNote: entry.minNote ?? live?.minNote,
+        maxNote: entry.maxNote ?? live?.maxNote,
+    }
+    const shift = computeKeySemitoneShift(eff, range)
     const preview = usePreviewPlayer()
     const keyPlayer = useKeyAdjustPreviewPlayer()
     const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
     const [loadingOrig, setLoadingOrig] = React.useState(false)
 
-    const hasInfo = entry.minNote != null && entry.maxNote != null && !!range
+    const hasInfo = eff.minNote != null && eff.maxNote != null && !!range
     const tooBig = Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES
     const canAdjust = shift !== 0 && !tooBig
     const origPlaying = preview.playingId === entry.id
     const adjPlaying = keyPlayer.playingId === entry.id
     const adjLoading = adjPlaying && keyPlayer.state === "loading"
+
+    // ---- 분석 요청 (음역 정보가 없는 곡) ----
+    const songKey = buildSongKey(entry.title, entry.artist)
+    const needsAnalysis = !!range && entry.minNote == null
+    const [analysis, setAnalysis] = React.useState<"checking" | "none" | "PENDING" | "FAILED" | "requesting">("checking")
+
+    async function refreshAnalysis() {
+        try {
+            const ranges = await api.getVocalRanges([{ title: entry.title, artist: entry.artist }])
+            const r = ranges?.[songKey]
+            if (r && r.minNote != null && r.maxNote != null) {
+                setLive({ minNote: r.minNote, maxNote: r.maxNote })
+                return
+            }
+            const st = await api.getAnalysisStatuses([{ title: entry.title, artist: entry.artist }])
+            const s = st?.[songKey]
+            setAnalysis(s === "PENDING" ? "PENDING" : s === "FAILED" ? "FAILED" : "none")
+        } catch {
+            setAnalysis("none")
+        }
+    }
+
+    async function requestAnalysis() {
+        setAnalysis("requesting")
+        try {
+            const r = await api.requestSongAnalysis({ title: entry.title, artist: entry.artist })
+            if (r.status === "DONE") await refreshAnalysis()
+            else setAnalysis(r.status === "PENDING" ? "PENDING" : "none")
+        } catch {
+            setAnalysis("none")
+        }
+    }
+
+    React.useEffect(() => {
+        if (!needsAnalysis) return
+        refreshAnalysis()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entry.title, entry.artist, needsAnalysis])
+
+    // 분석 중이면 15초마다 결과가 올라왔는지 확인
+    React.useEffect(() => {
+        if (analysis !== "PENDING" || live) return
+        const t = setInterval(refreshAnalysis, 15000)
+        return () => clearInterval(t)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [analysis, live])
 
     async function getUrl(): Promise<string | null> {
         if (previewUrl) return previewUrl
@@ -288,6 +342,27 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                 </div>
                 {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </div>
+            {range && !hasInfo && analysis !== "checking" && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {analysis === "PENDING" || analysis === "requesting" ? (
+                        <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            <span>{analysis === "requesting" ? "요청하는 중이에요..." : "분석 중이에요. 몇 분 뒤에 알려드릴게요"}</span>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={requestAnalysis}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground h-8 px-3 text-xs font-semibold"
+                            >
+                                <Wand2 className="h-3.5 w-3.5" />
+                                {analysis === "FAILED" ? "다시 분석 요청" : "분석 요청"}
+                            </button>
+                            <span>{analysis === "FAILED" ? "분석에 실패했어요" : "분석에는 몇 분 걸려요"}</span>
+                        </>
+                    )}
+                </div>
+            )}
             {previewUrl === null ? (
                 <div className="text-xs text-muted-foreground">
                     이 곡은 미리듣기를 제공하지 않아요
