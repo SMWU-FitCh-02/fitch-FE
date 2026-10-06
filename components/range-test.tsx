@@ -234,8 +234,36 @@ export function RangeTest({
     setLiveNotice("")
   }
 
+  // 이전 시도에서 남은 녹음기·마이크·오디오 컨텍스트·녹음 데이터를 전부 정리한다.
+  // (앱 안에서 '다시 측정하기'를 누르면 페이지가 새로 로드되지 않아 이전 상태가 그대로 남기 때문에
+  //  특히 iOS에서 두 번째 측정이 조용히 실패하던 문제를 막기 위함)
+  function releaseRecordingResources() {
+    const mr = mediaRecorderRef.current
+    if (mr) {
+      mr.ondataavailable = null
+      mr.onstop = null
+      try {
+        if (mr.state !== "inactive") mr.stop()
+      } catch {
+        // 이미 멈춘 상태면 무시
+      }
+    }
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    mediaRecorderRef.current = null
+    streamRef.current = null
+    chunksRef.current = []
+    recordedBlobRef.current = null
+    stopLevelMonitoring()
+    const ctx = audioCtxRef.current
+    audioCtxRef.current = null
+    if (ctx) {
+      ctx.close().catch(() => {})
+    }
+  }
+
   async function startRealRecording() {
-    if (mediaRecorderRef.current || typeof navigator === "undefined" || !navigator.mediaDevices) return
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) return
+    releaseRecordingResources()
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
@@ -488,6 +516,7 @@ export function RangeTest({
   }, [phase, mode, lowStepIdx, highStepIdx, classicLowIdx, classicHighIdx, userId])
 
   function resetAll() {
+    releaseRecordingResources()
     setMode(null)
     setPhase("intro")
     setLowStepIdx(LOW_START_INDEX)
@@ -502,9 +531,9 @@ export function RangeTest({
 
   React.useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop())
-      stopLevelMonitoring()
+      releaseRecordingResources()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (phase === "intro") {
