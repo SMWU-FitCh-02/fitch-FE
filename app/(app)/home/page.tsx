@@ -154,7 +154,7 @@ export default function HomePage() {
                 ) : (
                     <div className="space-y-2">
                         {popular.map((entry) => (
-                            <ChartSongRow key={entry.id} entry={entry} />
+                            <ChartSongRow key={entry.id} entry={entry} expandable={false} />
                         ))}
                     </div>
                 )}
