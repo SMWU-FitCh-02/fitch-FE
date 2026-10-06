@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Wand2, Heart, TrendingUp, User } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AnalysisWatcher } from "@/components/analysis-watcher"
 
 const items = [
     { href: "/library", label: "보관함", icon: Heart },
@@ -59,46 +60,49 @@ export function BottomNav() {
     })
 
     return (
-        <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.075rem)] pt-2">
-            <div
-                className={cn(
-                    "relative mx-auto max-w-md rounded-full bg-surface-elevated/50 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom p-1.5",
-                    shrunk ? "scale-80" : "scale-93"
-                )}
-            >
-                <ul className="relative grid grid-cols-5">
-                    {activeIndex >= 0 && (
-                        <li
-                            aria-hidden
-                            className="absolute inset-y-0 left-0 w-1/5 pointer-events-none transition-transform duration-300 ease-out"
-                            style={{ transform: `translateX(${activeIndex * 100}%)` }}
-                        >
-                            <div className="absolute inset-0.5 rounded-full bg-foreground/10" />
-                        </li>
+        <>
+            <AnalysisWatcher />
+            <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.075rem)] pt-2">
+                <div
+                    className={cn(
+                        "relative mx-auto max-w-md rounded-full bg-surface-elevated/50 backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out origin-bottom p-1.5",
+                        shrunk ? "scale-80" : "scale-93"
                     )}
-
-                    {items.map((it, i) => {
-                        const active = i === activeIndex
-                        const Icon = it.icon
-
-                        return (
-                            <li key={it.href} className="relative flex justify-center">
-                                <Link
-                                    href={it.href}
-                                    aria-label={it.label}
-                                    className={cn(
-                                        "flex flex-col items-center justify-center gap-1 w-full px-2 py-2 rounded-full text-[10px] font-semibold transition-colors",
-                                        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
-                                    {it.label}
-                                </Link>
+                >
+                    <ul className="relative grid grid-cols-5">
+                        {activeIndex >= 0 && (
+                            <li
+                                aria-hidden
+                                className="absolute inset-y-0 left-0 w-1/5 pointer-events-none transition-transform duration-300 ease-out"
+                                style={{ transform: `translateX(${activeIndex * 100}%)` }}
+                            >
+                                <div className="absolute inset-0.5 rounded-full bg-foreground/10" />
                             </li>
-                        )
-                    })}
-                </ul>
-            </div>
-        </nav>
+                        )}
+
+                        {items.map((it, i) => {
+                            const active = i === activeIndex
+                            const Icon = it.icon
+
+                            return (
+                                <li key={it.href} className="relative flex justify-center">
+                                    <Link
+                                        href={it.href}
+                                        aria-label={it.label}
+                                        className={cn(
+                                            "flex flex-col items-center justify-center gap-1 w-full px-2 py-2 rounded-full text-[10px] font-semibold transition-colors",
+                                            active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+                                        {it.label}
+                                    </Link>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
+            </nav>
+        </>
     )
 }

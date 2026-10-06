@@ -100,6 +100,12 @@ export default function KeyAdjustmentPage() {
     const [loading, setLoading] = React.useState(true)
     const [visible, setVisible] = React.useState(PAGE_SIZE)
 
+    // 알림의 "확인하기"로 들어오면 ?q=곡명 으로 검색어를 채워준다.
+    React.useEffect(() => {
+        const q = new URLSearchParams(window.location.search).get("q")
+        if (q) setQuery(q)
+    }, [])
+
     const [mode, setMode] = React.useState<"song" | "mood">("song")
     const [moodInput, setMoodInput] = React.useState("")
     const [aiSearching, setAiSearching] = React.useState(false)

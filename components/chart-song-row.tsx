@@ -9,6 +9,7 @@ import { fetchArtwork } from "@/lib/artwork-cache"
 import { usePreviewPlayer } from "@/lib/audio-preview"
 import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
 import { api, buildSongKey } from "@/lib/api"
+import { addWatch } from "@/lib/analysis-watch"
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -245,6 +246,7 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
             }
             const st = await api.getAnalysisStatuses([{ title: entry.title, artist: entry.artist }])
             const s = st?.[songKey]
+            if (s === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
             setAnalysis(s === "PENDING" ? "PENDING" : s === "FAILED" ? "FAILED" : "none")
         } catch {
             setAnalysis("none")
@@ -256,7 +258,10 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
         try {
             const r = await api.requestSongAnalysis({ title: entry.title, artist: entry.artist })
             if (r.status === "DONE") await refreshAnalysis()
-            else setAnalysis(r.status === "PENDING" ? "PENDING" : "none")
+            else {
+                if (r.status === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
+                setAnalysis(r.status === "PENDING" ? "PENDING" : "none")
+            }
         } catch {
             setAnalysis("none")
         }
@@ -347,7 +352,7 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                     {analysis === "PENDING" || analysis === "requesting" ? (
                         <>
                             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                            <span>{analysis === "requesting" ? "요청하는 중이에요..." : "분석 중이에요. 몇 분 뒤에 알려드릴게요"}</span>
+                            <span>{analysis === "requesting" ? "요청하는 중이에요..." : "분석 중이에요. 이 곡을 열어두면 끝나는 대로 바뀌어요"}</span>
                         </>
                     ) : (
                         <>
@@ -375,7 +380,7 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                         className={`${btnBase} bg-black/70 text-primary hover:bg-black/85 disabled:opacity-50`}
                     >
                         {loadingOrig || previewUrl === undefined ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                        <span>{origPlaying ? "재생 중" : "원곡"}</span>
+                        <span>{origPlaying ? "재생 중" : "미리듣기"}</span>
                     </button>
                     {canAdjust && (
                         <button
