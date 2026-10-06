@@ -173,13 +173,9 @@ export default function KeyAdjustmentPage() {
         if (!hasRange) return
         let cancelled = false
 
-        async function load() {
-            const [songsRes, melonRes, ...tjRes] = await Promise.allSettled([
-                api.getSongs(),
-                fetchMelonWithRange(100),
-                ...TJ_CATEGORIES.map((c) => fetchTjChartWithRange(100, c.value)),
-            ])
-            if (cancelled) return
+        // 받아온 결과(slots)로 곡 목록을 만들어 반영한다.
+        function buildCatalog(slots: PromiseSettledResult<any>[]) {
+            const [songsRes, melonRes, ...tjRes] = slots
 
             const merged: CatalogItem[] = []
             // 같은 곡이 가수 표기만 다르게 들어온 경우(예: "아이유" / "IU")도 하나로 합친다.
@@ -233,7 +229,41 @@ export default function KeyAdjustmentPage() {
                 for (const e of melonRes.value) addItem(e)
             }
             setCatalog(merged)
+        }
+
+        async function load() {
+            const tasks: Promise<unknown>[] = [
+                api.getSongs(),
+                fetchMelonWithRange(100),
+                ...TJ_CATEGORIES.map((c) => fetchTjChartWithRange(100, c.value)),
+            ]
+            const slots: PromiseSettledResult<any>[] = tasks.map(
+                () => ({ status: "rejected", reason: null }) as PromiseSettledResult<any>
+            )
+            const all = Promise.allSettled(
+                tasks.map((t, i) =>
+                    t
+                        .then((value) => {
+                            slots[i] = { status: "fulfilled", value }
+                        })
+                        .catch(() => {})
+                )
+            )
+
+            // 일부 요청이 느려도(예: TJ 차트 하나가 10초 이상) 전체가 멈추지 않도록,
+            // 4초까지만 기다렸다가 도착한 것만으로 먼저 화면을 보여준다.
+            await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, 4000))])
+            if (cancelled) return
+            buildCatalog(slots)
             setLoading(false)
+
+            // 늦게 도착한 목록이 있으면 합쳐서 한 번만 더 반영한다.
+            const doneBefore = slots.filter((x) => x.status === "fulfilled").length
+            await all
+            if (cancelled) return
+            if (slots.filter((x) => x.status === "fulfilled").length > doneBefore) {
+                buildCatalog(slots)
+            }
         }
 
         load()
