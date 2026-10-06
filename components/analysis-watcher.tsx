@@ -5,7 +5,7 @@ import { X, Sparkles } from "lucide-react"
 import { api, buildSongKey } from "@/lib/api"
 import { getWatches, removeWatches, WATCH_EVENT } from "@/lib/analysis-watch"
 
-type Toast = { id: number; title: string; artist: string; ok: boolean }
+type Toast = { id: number; title: string; artist: string; ok: boolean; leaving?: boolean }
 
 const POLL_MS = 15000
 const TOAST_MS = 9000
@@ -15,8 +15,10 @@ export function AnalysisWatcher() {
     const [toasts, setToasts] = React.useState<Toast[]>([])
     const nextId = React.useRef(1)
 
+    // 바로 지우지 않고, 위로 사라지는 애니메이션을 보여준 뒤 제거한다.
     const dismiss = React.useCallback((id: number) => {
-        setToasts((t) => t.filter((x) => x.id !== id))
+        setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)))
+        setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 280)
     }, [])
 
     const check = React.useCallback(async () => {
@@ -61,11 +63,20 @@ export function AnalysisWatcher() {
     return (
         <div
             className="fixed inset-x-0 z-[100] mx-auto flex max-w-md flex-col gap-2 px-4 pointer-events-none"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 6px)" }}
         >
+            <style>{`
+        @keyframes fitchToastIn { from { opacity: 0; transform: translateY(-14px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes fitchToastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-14px) scale(0.97); } }
+      `}</style>
             {toasts.map((t) => (
                 <div
                     key={t.id}
+                    style={{
+                        animation: t.leaving
+                            ? "fitchToastOut 0.28s ease-in forwards"
+                            : "fitchToastIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+                    }}
                     className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-primary/30 bg-card p-3 shadow-2xl shadow-black/50"
                 >
                     <Sparkles className="h-5 w-5 shrink-0 text-primary" />
