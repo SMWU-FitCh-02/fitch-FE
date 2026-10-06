@@ -54,6 +54,14 @@ function isTextMatch(a: string, b: string): boolean {
 // 수동으로 확인한 유명 아티스트의 한글 활동명 -> 공식 영문 표기 화이트리스트.
 // 아이튠즈 검색 결과가 영문으로만 나오는 경우(흔함)를 대비한 것.
 const ARTIST_ALIASES: Array<[string, string[]]> = [
+  ["아이유", ["IU"]],
+  ["악뮤", ["AKMU"]],
+  ["엑소", ["EXO"]],
+  ["샤이니", ["SHINee"]],
+  ["잔나비", ["JANNABI"]],
+  ["10cm", ["10CM"]],
+  ["임영웅", ["Lim Young Woong"]],
+  ["이무진", ["Lee Mujin"]],
   ["소녀시대", ["Girls' Generation"]],
   ["(여자)아이들", ["i-dle", "(G)I-DLE"]],
   ["검정치마", ["The Black Skirts"]],
@@ -196,6 +204,7 @@ const ARTIST_ALIASES: Array<[string, string[]]> = [
   ["홍광호", ["Hong Kwang Ho"]],
   ["임한별", ["Lim Hanbyeol"]],
   ["김태우", ["Kim Tae Woo"]],
+
   // 거북이(Turtles), 김하온(HAON)은 의도적으로 제외 — 피처링/프로듀서
   // 크레딧에 같은 이름이 걸려서 완전히 다른 곡이 1순위로 뽑히는 사례가
   // 확인됨 (거북이::빙고 -> 비행기, 김하온::ON to the next -> TICK TOCK).
