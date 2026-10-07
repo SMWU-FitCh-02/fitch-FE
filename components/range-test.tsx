@@ -827,7 +827,7 @@ export function RangeTest({
             {failReason && (
                 <div className="mt-3 rounded-[10px] bg-surface/70 border border-border/60 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed break-words">
                   {failReason.startsWith("서버 요청 실패")
-                      ? "소리가 잘 안 잡혔어요. 조용한 곳에서 마이크에 가까이 대고 '아~' 하고 또렷하게 다시 해주세요."
+                      ? "소리가 잘 안 잡혔어요. 조용한 곳에서 마이크에 가까이 대고 다시 해주세요."
                       : failReason}
                 </div>
             )}
