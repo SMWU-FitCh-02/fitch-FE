@@ -758,9 +758,6 @@ export function RangeTest({
           </div>
 
           {micNotice && <p className="text-xs text-muted-foreground">{micNotice}</p>}
-          {!recording && monitorDiag && (
-              <p className="text-[10px] text-muted-foreground break-all">진단: {monitorDiag}</p>
-          )}
 
           <div className="w-full space-y-3">
             {recording ? (
