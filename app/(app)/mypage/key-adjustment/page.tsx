@@ -65,6 +65,23 @@ type CatalogItem = {
     displayArtist?: string
     // 실시간 검색(iTunes)에서 장르로 한국 곡이라고 판단된 곡
     isKorean?: boolean
+    // TJ 차트 카테고리로 알 수 있는 장르 (예: ["발라드", "OST"]). 회원가입에서 고른 선호 장르와 같은 이름을 쓴다.
+    genres?: string[]
+}
+
+// TJ 차트 카테고리 코드 → 선호 장르 이름 ("종합"은 장르가 아니라서 없음)
+const TJ_VALUE_TO_GENRE: Record<string, string> = {
+    "2": "POP",
+    "4": "발라드",
+    "5": "댄스",
+    "8": "OST",
+    "10": "랩/힙합",
+    "11": "R&B/어반",
+}
+
+function mergeGenres(a?: string[], b?: string[]): string[] | undefined {
+    const all = Array.from(new Set([...(a ?? []), ...(b ?? [])]))
+    return all.length ? all : undefined
 }
 
 // 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
@@ -121,6 +138,10 @@ export default function KeyAdjustmentPage() {
     const [catalog, setCatalog] = React.useState<CatalogItem[]>([])
     const [loading, setLoading] = React.useState(true)
     const [visible, setVisible] = React.useState(PAGE_SIZE)
+    // 회원가입 때 고른 선호 장르로 좁혀 보기 (고른 장르가 없으면 쓰지 않는다)
+    const myGenres = profile.preferredGenres ?? []
+    const [onlyMyGenres, setOnlyMyGenres] = React.useState(true)
+    const useGenreFilter = onlyMyGenres && myGenres.length > 0
 
     const [mode, setMode] = React.useState<"song" | "mood">("song")
     const [moodInput, setMoodInput] = React.useState("")
@@ -187,6 +208,10 @@ export default function KeyAdjustmentPage() {
                 const dupIdx = group.findIndex((g) => sameArtist(g.artist, item.artist))
                 if (dupIdx >= 0) {
                     const existing = group[dupIdx]
+                    // 같은 곡이 여러 카테고리/출처에 나오면 장르 정보를 합쳐 둔다.
+                    const unionGenres = mergeGenres(existing.genres, item.genres)
+                    existing.genres = unionGenres
+                    item.genres = unionGenres
                     // 기존 항목에 음역 정보가 없고 새 항목에는 있으면 새 쪽으로 교체
                     if ((existing.minNote == null || existing.maxNote == null) && item.minNote != null && item.maxNote != null) {
                         const at = merged.indexOf(existing)
@@ -212,10 +237,13 @@ export default function KeyAdjustmentPage() {
                     })
                 }
             }
-            for (const r of tjRes) {
+            for (let ti = 0; ti < tjRes.length; ti++) {
+                const r = tjRes[ti]
                 if (r.status !== "fulfilled") continue
+                const genre = TJ_VALUE_TO_GENRE[String((TJ_CATEGORIES as any)[ti]?.value ?? "")]
                 for (const e of r.value) {
                     addItem({
+                        genres: genre ? [genre] : undefined,
                         id: e.id,
                         title: e.title,
                         artist: e.artist,
@@ -308,9 +336,14 @@ export default function KeyAdjustmentPage() {
             ]
         }
         const range = profile.range
-        if (!range) return catalog
+        // 선호 장르가 있으면 그 장르의 곡만. 해당 곡이 아직 하나도 없으면(목록 로딩 중 등) 전체를 쓴다.
+        const genrePool = useGenreFilter
+            ? catalog.filter((c) => c.genres?.some((g) => myGenres.includes(g)))
+            : catalog
+        const pool = genrePool.length > 0 ? genrePool : catalog
+        if (!range) return pool
         const userMax = noteToMidi(range.highestNote)
-        const scored = catalog.map((item) => {
+        const scored = pool.map((item) => {
             if (item.minNote == null || item.maxNote == null) return { item, shift: 99, gap: 99 }
             const shift = Math.abs(
                 computeKeySemitoneShift({ minNote: item.minNote, maxNote: item.maxNote } as ChartEntryWithRange, range)
@@ -319,7 +352,7 @@ export default function KeyAdjustmentPage() {
         })
         scored.sort((a, b) => a.shift - b.shift || a.gap - b.gap)
         return scored.map((x) => x.item)
-    }, [query, catalog, profile.range])
+    }, [query, catalog, profile.range, useGenreFilter, myGenres.join(",")])
 
     const shown = filtered.slice(0, visible)
 
@@ -590,9 +623,36 @@ export default function KeyAdjustmentPage() {
                         <div className="mt-6 text-center text-xs text-muted-foreground">검색 결과가 없어요</div>
                     )}
 
+                    {!query.trim() && myGenres.length > 0 && (
+                        <div className="mt-3 flex items-center gap-2 px-1">
+                            <button
+                                type="button"
+                                onClick={() => setOnlyMyGenres(true)}
+                                className={
+                                    "h-8 rounded-full px-3 text-xs font-semibold border " +
+                                    (onlyMyGenres ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground")
+                                }
+                            >
+                                내 취향 ({myGenres.join("·")})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setOnlyMyGenres(false)}
+                                className={
+                                    "h-8 rounded-full px-3 text-xs font-semibold border " +
+                                    (!onlyMyGenres ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground")
+                                }
+                            >
+                                전체
+                            </button>
+                        </div>
+                    )}
+
                     {!loading && filtered.length > 0 && (
                         <div className="mt-3 px-1 text-[11px] text-muted-foreground">
-                            {query.trim() ? `검색 결과 ${filtered.length}곡` : `전체 ${filtered.length}곡 · 내 음역대에 가까운 순`}
+                            {query.trim()
+                                ? `검색 결과 ${filtered.length}곡`
+                                : `${useGenreFilter ? "내 취향 장르" : "전체"} ${filtered.length}곡 · 내 음역대에 가까운 순`}
                         </div>
                     )}
 
