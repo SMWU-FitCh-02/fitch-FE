@@ -240,30 +240,27 @@ export default function KeyAdjustmentPage() {
             const slots: PromiseSettledResult<any>[] = tasks.map(
                 () => ({ status: "rejected", reason: null }) as PromiseSettledResult<any>
             )
+
+            // 요청이 하나 도착할 때마다 바로 곡 목록에 반영한다.
+            // (예전에는 전부 기다리거나 4초를 채워야 화면이 나왔다.)
+            // DB 곡 목록(0번)이 먼저 오면 그 즉시 로딩 문구를 걷어낸다.
             const all = Promise.allSettled(
                 tasks.map((t, i) =>
                     t
                         .then((value) => {
                             slots[i] = { status: "fulfilled", value }
+                            if (cancelled) return
+                            buildCatalog(slots)
+                            if (i === 0) setLoading(false)
                         })
                         .catch(() => {})
                 )
             )
 
-            // 일부 요청이 느려도(예: TJ 차트 하나가 10초 이상) 전체가 멈추지 않도록,
-            // 4초까지만 기다렸다가 도착한 것만으로 먼저 화면을 보여준다.
-            await Promise.race([all, new Promise<void>((resolve) => setTimeout(resolve, 4000))])
-            if (cancelled) return
-            buildCatalog(slots)
-            setLoading(false)
-
-            // 늦게 도착한 목록이 있으면 합쳐서 한 번만 더 반영한다.
-            const doneBefore = slots.filter((x) => x.status === "fulfilled").length
             await all
             if (cancelled) return
-            if (slots.filter((x) => x.status === "fulfilled").length > doneBefore) {
-                buildCatalog(slots)
-            }
+            // 전부 실패했거나 DB 목록이 없어도 로딩 문구는 끝낸다.
+            setLoading(false)
         }
 
         load()
