@@ -8,8 +8,8 @@ import { WaveBars } from "@/components/fitch-logo"
 import type { RangeRecord } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
-import { noteToKorean, noteToMidi, midiToNote } from "@/lib/songs"
-import { detectPitch, freqToMidi } from "@/lib/pitch-detect"
+import { noteToKorean } from "@/lib/songs"
+import { toIsoFromServer } from "@/lib/time"
 
 type Phase = "intro" | "low" | "high" | "analyzing" | "done" | "failed"
 type Mode = "guide" | "classic"
@@ -37,17 +37,6 @@ const LIVE_SMOOTHING_ALPHA = 0.15  // 지수이동평균 계수 — 작을수록
 const LIVE_HOLD_MS = 400           // 같은 상태가 이만큼 지속돼야 문구를 바꿈(깜빡임 방지)
 const STEP_MIN_VOICED_RATIO = 0.25 // 3초 녹음 중 "소리가 들린" 프레임 비율이 이보다 낮으면 측정 실패로 간주
 const MONITOR_DEAD_RMS = 0.0005     // 이 단계 내내 음량이 이보다 작으면 '음량 모니터가 먹통'(아이폰에서 가끔 발생)으로 보고 실패 판정에서 제외
-
-// 가이드 음 자동 측정: 가이드음(AUTO_TONE_MS) → 잠깐 쉬고 → 따라 부르는 시간(AUTO_LISTEN_MS) 동안 실시간 음높이를 듣는다.
-// 목표 음 ±1반음 안의 소리가 AUTO_HITS_NEEDED번(약 0.4초) 잡히면 성공 → 다음 음. 못 맞추면 한 번 더 들려주고, 그래도 안 되면 마지막 성공 음에서 끝.
-const AUTO_TONE_MS = 1600
-const AUTO_AFTER_TONE_GAP_MS = 500 // 스피커 소리가 마이크에 섞이지 않게, 가이드음이 끝난 뒤 잠깐 쉬었다가 듣기 시작
-const AUTO_LISTEN_MS = 4500
-const AUTO_TICK_MS = 50
-const AUTO_HITS_NEEDED = 8
-const AUTO_MAX_ATTEMPTS = 2
-const AUTO_MIN_RMS = 0.008
-const AUTO_MIN_CLARITY = 0.8
 
 export function RangeTest({
                             onComplete,
@@ -523,7 +512,7 @@ export function RangeTest({
         }
         if (!cancelled) {
           setResult({
-            testedAt: res.measuredAt || new Date().toISOString(),
+            testedAt: toIsoFromServer(res.measuredAt) || new Date().toISOString(),
             lowestNote: res.minNoteLabel,
             highestNote: res.maxNoteLabel,
             comfortableHigh: shiftDownInHighLadder(res.maxNoteLabel, 2),
@@ -561,170 +550,7 @@ export function RangeTest({
     setRecording(false)
     setStepMeasureFailed(false)
     setFailReason("")
-    setAutoAttempt(0)
-    setAutoHits(0)
-    setHeardLabel("")
   }
-
-  // ---- 가이드 음 자동 측정 (마이크로 실시간 음높이를 들어서 성공/실패를 자동 판단) ----
-  const [autoOn, setAutoOn] = React.useState(true)
-  const [autoState, setAutoState] = React.useState<"tone" | "listen" | "ok" | "miss">("tone")
-  const [autoHits, setAutoHits] = React.useState(0)
-  const [heardLabel, setHeardLabel] = React.useState("")
-  const [autoAttempt, setAutoAttempt] = React.useState(0)
-  const [autoMicReady, setAutoMicReady] = React.useState(false)
-  const [autoMicError, setAutoMicError] = React.useState("")
-  const pitchStreamRef = React.useRef<MediaStream | null>(null)
-  const pitchSourceRef = React.useRef<MediaStreamAudioSourceNode | null>(null)
-  const pitchAnalyserRef = React.useRef<AnalyserNode | null>(null)
-
-  const inAutoGuide = mode === "guide" && autoOn && (phase === "low" || phase === "high")
-
-  // 자동 측정이 필요한 동안(낮은 음 → 높은 음)만 마이크를 열어 둔다.
-  React.useEffect(() => {
-    if (!inAutoGuide) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-        })
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop())
-          return
-        }
-        const ctx = getAudioCtx()
-        if (ctx.state !== "running") {
-          await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 700))])
-        }
-        const source = ctx.createMediaStreamSource(stream)
-        const analyser = ctx.createAnalyser()
-        analyser.fftSize = 4096
-        source.connect(analyser)
-        pitchStreamRef.current = stream
-        pitchSourceRef.current = source
-        pitchAnalyserRef.current = analyser
-        setAutoMicError("")
-        setAutoMicReady(true)
-      } catch {
-        if (!cancelled) {
-          setAutoMicError("마이크를 쓸 수 없어서 버튼으로 직접 고르는 방식으로 바꿨어요.")
-          setAutoOn(false)
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-      try {
-        pitchSourceRef.current?.disconnect()
-      } catch {
-        // 이미 끊겼으면 무시
-      }
-      pitchStreamRef.current?.getTracks().forEach((t) => t.stop())
-      pitchSourceRef.current = null
-      pitchStreamRef.current = null
-      pitchAnalyserRef.current = null
-      setAutoMicReady(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inAutoGuide])
-
-  // 한 음 단계: 가이드음 재생 → 따라 부르는 소리 듣기 → 성공이면 다음 음, 실패면 재시도 → 그래도 실패면 마지막 성공 음에서 끝
-  React.useEffect(() => {
-    if (!inAutoGuide || !autoMicReady) return
-    const isLow = phase === "low"
-    const note = isLow ? LOW_LADDER_DESC[lowStepIdx] : HIGH_LADDER[highStepIdx]
-    const isLastStep = isLow ? lowStepIdx >= LOW_LADDER_DESC.length - 1 : highStepIdx >= HIGH_LADDER.length - 1
-    const targetMidi = noteToMidi(note)
-    let cancelled = false
-    const timers: ReturnType<typeof setTimeout>[] = []
-    let tick: ReturnType<typeof setInterval> | null = null
-    const wait = (ms: number) =>
-        new Promise<void>((res) => {
-          timers.push(setTimeout(res, ms))
-        })
-    const finish = () => {
-          // 마지막으로 성공한 음이 결과. (현재 음은 세지 않는다 — lowestFromIndex/highestFromIndex가 idx-1을 돌려줌)
-          if (isLow) goToHighPhaseGuide()
-          else setPhase("analyzing")
-        }
-
-    ;(async () => {
-      setAutoState("tone")
-      setAutoHits(0)
-      setHeardLabel("")
-      await loadPianoBuffer(note) // 처음 한 번은 음원을 받아오느라 늦을 수 있어서, 먼저 받아두고 재생
-      if (cancelled) return
-      playGuideTone(note, AUTO_TONE_MS)
-      await wait(AUTO_TONE_MS + AUTO_AFTER_TONE_GAP_MS)
-      if (cancelled) return
-
-      setAutoState("listen")
-      const analyser = pitchAnalyserRef.current
-      const sr = audioCtxRef.current?.sampleRate ?? 48000
-      if (!analyser) return
-      const buf = new Float32Array(analyser.fftSize)
-      let hits = 0
-      const outcome = await new Promise<"ok" | "timeout">((resolve) => {
-        const startAt = performance.now()
-        tick = setInterval(() => {
-          if (cancelled) {
-            resolve("timeout")
-            return
-          }
-          analyser.getFloatTimeDomainData(buf)
-          const p = detectPitch(buf, sr, AUTO_MIN_RMS)
-          if (p && p.clarity >= AUTO_MIN_CLARITY) {
-            const midi = freqToMidi(p.freq)
-            setHeardLabel(noteToKorean(midiToNote(Math.round(midi))))
-            hits = Math.abs(midi - targetMidi) <= 1 ? hits + 1 : Math.max(0, hits - 2)
-            setAutoHits(hits)
-            if (hits >= AUTO_HITS_NEEDED) {
-              resolve("ok")
-              return
-            }
-          }
-          if (performance.now() - startAt > AUTO_LISTEN_MS) resolve("timeout")
-        }, AUTO_TICK_MS)
-      })
-      if (tick) clearInterval(tick)
-      if (cancelled) return
-
-      if (outcome === "ok") {
-        setAutoState("ok")
-        await wait(800)
-        if (cancelled) return
-        setAutoAttempt(0)
-        if (isLastStep) {
-          finish() // 사다리 끝까지 성공
-        } else if (isLow) {
-          handleLowSuccess()
-        } else {
-          handleHighSuccess()
-        }
-        return
-      }
-
-      setAutoState("miss")
-      if (autoAttempt + 1 < AUTO_MAX_ATTEMPTS) {
-        await wait(1200)
-        if (cancelled) return
-        setAutoAttempt((a) => a + 1) // 같은 음을 한 번 더 들려주고 다시 듣는다
-        return
-      }
-      await wait(1200)
-      if (cancelled) return
-      setAutoAttempt(0)
-      finish()
-    })()
-
-    return () => {
-      cancelled = true
-      timers.forEach(clearTimeout)
-      if (tick) clearInterval(tick)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inAutoGuide, autoMicReady, phase, lowStepIdx, highStepIdx, autoAttempt])
 
   React.useEffect(() => {
     return () => {
@@ -778,7 +604,7 @@ export function RangeTest({
               </div>
               <div className="text-sm font-bold">가이드 음</div>
               <div className="text-[11px] text-muted-foreground leading-snug">
-                음을 듣고 따라 부르면 자동으로 측정
+                음을 듣고 따라 부르며 측정
               </div>
             </button>
 
@@ -829,105 +655,42 @@ export function RangeTest({
             <div className="text-2xl font-extrabold text-primary">
               {noteToKorean(currentNote)}
             </div>
-            {autoOn ? (
-                <div className="w-full space-y-2">
-                  <div className="min-h-[44px] text-sm font-semibold">
-                    {!autoMicReady
-                        ? "마이크 준비 중이에요…"
-                        : autoState === "tone"
-                            ? "🎹 가이드음을 잘 들어보세요"
-                            : autoState === "listen"
-                                ? "지금 따라 불러보세요! '아~'"
-                                : autoState === "ok"
-                                    ? "✅ 좋아요! 다음 음으로 갈게요"
-                                    : autoAttempt + 1 < AUTO_MAX_ATTEMPTS
-                                        ? "아직 안 맞아요. 한 번 더 들려드릴게요"
-                                        : "여기까지로 정할게요"}
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${Math.min(100, (autoHits / AUTO_HITS_NEEDED) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground h-4">
-                    {autoState === "listen" && heardLabel ? `들리는 음: ${heardLabel}` : ""}
-                  </div>
-                </div>
-            ) : (
-                <Button variant="outline" size="sm" onClick={() => playGuideTone(currentNote)}>
-                  <Music2 className="h-4 w-4" /> 가이드음 다시 듣기
-                </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={() => playGuideTone(currentNote)}>
+              <Music2 className="h-4 w-4" /> 가이드음 다시 듣기
+            </Button>
           </div>
 
-          {autoOn ? (
-              <div className="w-full space-y-3">
-                {autoMicError && <p className="text-xs text-destructive">{autoMicError}</p>}
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" size="lg" onClick={isLow ? handleLowPrev : handleHighPrev} disabled={atStart}>
-                    ← 이전 음
-                  </Button>
-                  <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => {
-                        if (isLow) goToHighPhaseGuide()
-                        else setPhase("analyzing")
-                      }}
-                  >
-                    여기서 끝내기
-                  </Button>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => setAutoOn(false)}
-                    className="text-xs text-muted-foreground underline underline-offset-2"
-                >
-                  자동 감지가 안 되면 버튼으로 직접 고르기
-                </button>
-              </div>
-          ) : (
-              <div className="w-full space-y-3">
-                {autoMicError && <p className="text-xs text-destructive">{autoMicError}</p>}
-                <Button
-                    variant="brand"
-                    size="lg"
-                    className="w-full"
-                    onClick={isLow ? handleLowSuccess : handleHighSuccess}
-                    disabled={atEnd}
-                >
-                  냈어요! 다음 음으로 {isLow ? "⬇️" : "⬆️"}
-                </Button>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={isLow ? handleLowPrev : handleHighPrev}
-                      disabled={atStart}
-                  >
-                    ← 이전 음
-                  </Button>
-                  <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={isLow ? handleLowFail : handleHighFail}
-                  >
-                    여기까지가 한계예요
-                  </Button>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => {
-                      setAutoMicError("")
-                      setAutoOn(true)
-                    }}
-                    className="text-xs text-muted-foreground underline underline-offset-2"
-                >
-                  자동 감지로 돌아가기
-                </button>
-              </div>
-          )}
+          <div className="w-full space-y-3">
+            <p className="text-xs text-muted-foreground">
+
+            </p>
+            <Button
+                variant="brand"
+                size="lg"
+                className="w-full"
+                onClick={isLow ? handleLowSuccess : handleHighSuccess}
+                disabled={atEnd}
+            >
+              냈어요! 다음 음으로 {isLow ? "⬇️" : "⬆️"}
+            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={isLow ? handleLowPrev : handleHighPrev}
+                  disabled={atStart}
+              >
+                ← 이전 음
+              </Button>
+              <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={isLow ? handleLowFail : handleHighFail}
+              >
+                여기까지가 한계예요
+              </Button>
+            </div>
+          </div>
         </div>
     )
   }
