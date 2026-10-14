@@ -141,7 +141,7 @@ export default function RecommendationsPage() {
                             type="text"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder="예) 아이유 좋은날과 비슷한 느낌의 곡"
+                            placeholder="예) 잔잔하고 감성적인 곡"
                             className="w-full h-12 pl-10 pr-10 rounded-[14px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                         />
                         {searchInput && (

@@ -6,9 +6,7 @@ import { ChevronRight, Mic, RefreshCw, TrendingUp } from "lucide-react"
 import { FitchLogo } from "@/components/fitch-logo"
 import { Button } from "@/components/ui/button"
 import { useStore } from "@/lib/store"
-import { SONGS } from "@/lib/songs"
 import { noteToKorean } from "@/lib/songs"
-import { SongCard } from "@/components/song-card"
 import { type ChartEntry } from "@/lib/itunes"
 import { fetchTjTop100 } from "@/lib/tjchart"
 import { ChartSongRow } from "@/components/chart-song-row"
@@ -58,11 +56,6 @@ export default function HomePage() {
             cancelled = true
         }
     }, [])
-
-    const preferredArtistSongs = React.useMemo(() => {
-        if (!profile.preferredArtists.length) return []
-        return SONGS.filter((s) => profile.preferredArtists.includes(s.artist)).slice(0, 8)
-    }, [profile.preferredArtists])
 
     return (
         <main className="px-4 pt-1 pb-6 space-y-6">            <header className="flex items-center justify-between px-1">
@@ -125,21 +118,6 @@ export default function HomePage() {
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                 </Link>
-            )}
-
-            {/* Preferred artist songs */}
-            {preferredArtistSongs.length > 0 && (
-                <Section
-                    title="내가 좋아한 아티스트의 곡"
-                    subtitle="가입 시 선택하신 아티스트 기반"
-                    href="/mypage/artist-recommendations"
-                >
-                    <div className="space-y-2">
-                        {preferredArtistSongs.slice(0, 3).map((s) => (
-                            <SongCard key={s.id} song={s} />
-                        ))}
-                    </div>
-                </Section>
             )}
 
             {/* Popular chart — TJ미디어 노래방 인기차트 기준, TOP 100 전체 */}

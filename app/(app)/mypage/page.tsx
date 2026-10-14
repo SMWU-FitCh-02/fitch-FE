@@ -171,6 +171,13 @@ export default function MyPage() {
                     <div className="flex-1 text-sm font-semibold">개인정보 / 보안</div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground"/>
                 </Link>
+                <Link href="/credits" className="flex items-center gap-3 p-4 hover:bg-surface/50">
+                    <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
+                        <Music2 className="h-5 w-5"/>
+                    </div>
+                    <div className="flex-1 text-sm font-semibold">음원 출처</div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground"/>
+                </Link>
             </div>
 
             <Separator className="my-6"/>

@@ -4,7 +4,6 @@ import * as React from "react"
 import Link from "next/link"
 import type { SongResponse } from "@/lib/api"
 import { difficultyTier, colorFromString } from "@/lib/song-display"
-import { fetchArtwork } from "@/lib/artwork-cache"
 import { noteToKorean } from "@/lib/songs"
 
 // 다른 화면(인기차트, 유사 음색 아티스트 추천 등)의 ChartSongRow/ChartPodiumItem에서
@@ -25,37 +24,19 @@ function DifficultyBadge({ stars }: { stars: 1 | 2 | 3 }) {
 export function BackendSongCard({ song }: { song: SongResponse }) {
   const tier = difficultyTier(song.maxNote)
   const bg = colorFromString(song.title + song.artist)
-  const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    let cancelled = false
-    fetchArtwork(song.title, song.artist).then((data) => {
-      if (!cancelled && data.artworkUrl) setArtworkUrl(data.artworkUrl)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [song.title, song.artist])
 
   return (
       <Link
           href={`/songs/${song.songId}`}
           className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3 transition-colors hover:bg-card/70"
       >
-        {artworkUrl ? (
-            <img
-                src={artworkUrl}
-                alt={song.title}
-                className="h-14 w-14 shrink-0 rounded-[10px] object-cover"
-            />
-        ) : (
-            <div
-                className="h-14 w-14 shrink-0 rounded-[10px] grid place-items-center text-white text-lg font-extrabold"
-                style={{ backgroundColor: bg }}
-            >
-              {song.title.charAt(0)}
-            </div>
-        )}
+        {/* 전시회: 저작권 프리 곡이라 앨범 커버(iTunes) 조회 없이 글자 썸네일만 쓴다 */}
+        <div
+            className="h-14 w-14 shrink-0 rounded-[10px] grid place-items-center text-white text-lg font-extrabold"
+            style={{ backgroundColor: bg }}
+        >
+          {song.title.charAt(0)}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-bold">{song.title}</div>
           <div className="truncate text-xs text-muted-foreground">{song.artist}</div>

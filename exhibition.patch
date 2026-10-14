@@ -1,0 +1,2304 @@
+
+--- a/app/(app)/credits/page.tsx	1970-01-01 09:00:00.000000000 +0900
++++ b/app/(app)/credits/page.tsx	2026-10-15 01:08:00.900121807 +0900
+@@ -0,0 +1,37 @@
++"use client"
++
++import { useRouter } from "next/navigation"
++import { ArrowLeft } from "lucide-react"
++import { SONG_CREDITS } from "@/lib/credits"
++import { CreditLine } from "@/components/song-credit"
++
++export default function CreditsPage() {
++  const router = useRouter()
++  return (
++    <main className="px-4 pt-4 pb-24">
++      <header className="flex items-center gap-2 px-1 mb-4">
++        <button
++          onClick={() => router.back()}
++          className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted text-muted-foreground"
++          aria-label="뒤로"
++        >
++          <ArrowLeft className="h-5 w-5" />
++        </button>
++        <h1 className="text-base font-bold">음원 출처</h1>
++      </header>
++
++      <p className="px-1 mb-4 text-xs leading-relaxed text-muted-foreground">
++        FitCh의 곡별 음역대 데이터는 Free Music Archive의 CC BY 라이선스 음원을 분석해 만들었습니다.
++        음원 자체는 앱에서 재생하거나 배포하지 않으며, 분석한 최저음·최고음 수치만 사용합니다.
++      </p>
++
++      <div className="space-y-2">
++        {SONG_CREDITS.map((c) => (
++          <div key={`${c.title}::${c.artist}`} className="rounded-[12px] border border-border bg-card p-3">
++            <CreditLine credit={c} />
++          </div>
++        ))}
++      </div>
++    </main>
++  )
++}
+
+--- a/app/(app)/home/page.tsx	2026-10-15 01:07:06.883624498 +0900
++++ b/app/(app)/home/page.tsx	2026-10-15 01:08:36.032454089 +0900
+@@ -6,9 +6,7 @@
+ import { FitchLogo } from "@/components/fitch-logo"
+ import { Button } from "@/components/ui/button"
+ import { useStore } from "@/lib/store"
+-import { SONGS } from "@/lib/songs"
+ import { noteToKorean } from "@/lib/songs"
+-import { SongCard } from "@/components/song-card"
+ import { type ChartEntry } from "@/lib/itunes"
+ import { fetchTjTop100 } from "@/lib/tjchart"
+ import { ChartSongRow } from "@/components/chart-song-row"
+@@ -59,11 +57,6 @@
+         }
+     }, [])
+ 
+-    const preferredArtistSongs = React.useMemo(() => {
+-        if (!profile.preferredArtists.length) return []
+-        return SONGS.filter((s) => profile.preferredArtists.includes(s.artist)).slice(0, 8)
+-    }, [profile.preferredArtists])
+-
+     return (
+         <main className="px-4 pt-1 pb-6 space-y-6">            <header className="flex items-center justify-between px-1">
+                 <FitchLogo />
+@@ -127,21 +120,6 @@
+                 </Link>
+             )}
+ 
+-            {/* Preferred artist songs */}
+-            {preferredArtistSongs.length > 0 && (
+-                <Section
+-                    title="내가 좋아한 아티스트의 곡"
+-                    subtitle="가입 시 선택하신 아티스트 기반"
+-                    href="/mypage/artist-recommendations"
+-                >
+-                    <div className="space-y-2">
+-                        {preferredArtistSongs.slice(0, 3).map((s) => (
+-                            <SongCard key={s.id} song={s} />
+-                        ))}
+-                    </div>
+-                </Section>
+-            )}
+-
+             {/* Popular chart — TJ미디어 노래방 인기차트 기준, TOP 100 전체 */}
+             <Section
+                 title="노래방 인기차트"
+
+--- a/app/(app)/library/page.tsx	2026-10-15 01:07:06.883756213 +0900
++++ b/app/(app)/library/page.tsx	2026-10-15 01:08:36.032749895 +0900
+@@ -4,14 +4,12 @@
+ import { BookmarkCheck, Heart } from "lucide-react"
+ import { useStore } from "@/lib/store"
+ import { api, type ChartLikeEntry } from "@/lib/api"
+-import { MyAnalysisRequests } from "@/components/my-analysis-requests"
+ 
+ export default function LibraryPage() {
+     const { profile, toggleChartLikeRemote } = useStore()
+ 
+     const [likedCharts, setLikedCharts] = React.useState<ChartLikeEntry[]>([])
+     const [loading, setLoading] = React.useState(true)
+-    const [tab, setTab] = React.useState<"likes" | "requests">("likes")
+ 
+     React.useEffect(() => {
+         if (!profile.userId) return
+@@ -42,27 +40,7 @@
+                 </div>
+             </header>
+ 
+-            <div className="mb-4 grid grid-cols-2 rounded-full bg-surface/60 border border-border p-1 text-sm font-semibold">
+-                {([
+-                    ["likes", "좋아요"],
+-                    ["requests", "분석 요청"],
+-                ] as const).map(([key, label]) => (
+-                    <button
+-                        key={key}
+-                        type="button"
+-                        onClick={() => setTab(key)}
+-                        className={`h-9 rounded-full transition-colors ${
+-                            tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+-                        }`}
+-                    >
+-                        {label}
+-                    </button>
+-                ))}
+-            </div>
+-
+-            {tab === "requests" ? (
+-                <MyAnalysisRequests />
+-            ) : loading ? (
++            {loading ? (
+                 <div className="text-center text-xs text-muted-foreground py-10">불러오는 중...</div>
+             ) : (
+                 <>
+
+--- a/app/(app)/mypage/key-adjustment/page.tsx	2026-10-15 01:07:06.884267183 +0900
++++ b/app/(app)/mypage/key-adjustment/page.tsx	2026-10-15 01:08:36.031557470 +0900
+@@ -5,7 +5,7 @@
+ import { Search, Mic, Wand2, Loader2, X } from "lucide-react"
+ import { Input } from "@/components/ui/input"
+ import { Button } from "@/components/ui/button"
+-import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
++import { ChartSongRow, computeKeySemitoneShift, isOwnSong, type ChartEntryWithRange } from "@/components/chart-song-row"
+ import { fetchTjChartWithRange, TJ_CATEGORIES } from "@/lib/tjchart"
+ import { useStore } from "@/lib/store"
+ import { api, buildSongKey } from "@/lib/api"
+@@ -84,12 +84,12 @@
+     return all.length ? all : undefined
+ }
+ 
+-// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
++// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키)를 그대로 쓴다.
+ function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
+     const [artworkUrl, setArtworkUrl] = React.useState<string | null>(item.artworkUrl || null)
+ 
+     React.useEffect(() => {
+-        if (item.artworkUrl) return
++        if (item.artworkUrl || isOwnSong(item.id)) return
+         let cancelled = false
+         fetchArtwork(item.title, item.artist)
+             .then((data) => {
+@@ -99,7 +99,7 @@
+         return () => {
+             cancelled = true
+         }
+-    }, [item.title, item.artist, item.artworkUrl])
++    }, [item.id, item.title, item.artist, item.artworkUrl])
+ 
+     const entry = {
+         id: item.id,
+@@ -548,7 +548,7 @@
+                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                             <Input
+                                 className="pl-9 pr-9"
+-                                placeholder="예) 아이유 좋은날 같은 느낌의 곡"
++                                placeholder="예) 잔잔하고 감성적인 곡"
+                                 value={moodInput}
+                                 onChange={(e) => setMoodInput(e.target.value)}
+                             />
+
+--- a/app/(app)/mypage/page.tsx	2026-10-15 01:07:06.884489409 +0900
++++ b/app/(app)/mypage/page.tsx	2026-10-15 01:09:12.468977197 +0900
+@@ -171,6 +171,13 @@
+                     <div className="flex-1 text-sm font-semibold">개인정보 / 보안</div>
+                     <ChevronRight className="h-4 w-4 text-muted-foreground"/>
+                 </Link>
++                <Link href="/credits" className="flex items-center gap-3 p-4 hover:bg-surface/50">
++                    <div className="h-10 w-10 rounded-[10px] bg-accent text-foreground grid place-items-center">
++                        <Music2 className="h-5 w-5"/>
++                    </div>
++                    <div className="flex-1 text-sm font-semibold">음원 출처</div>
++                    <ChevronRight className="h-4 w-4 text-muted-foreground"/>
++                </Link>
+             </div>
+ 
+             <Separator className="my-6"/>
+
+--- a/app/(app)/recommendations/page.tsx	2026-10-15 01:07:06.884968426 +0900
++++ b/app/(app)/recommendations/page.tsx	2026-10-15 01:08:36.031976645 +0900
+@@ -141,7 +141,7 @@
+                             type="text"
+                             value={searchInput}
+                             onChange={(e) => setSearchInput(e.target.value)}
+-                            placeholder="예) 아이유 좋은날과 비슷한 느낌의 곡"
++                            placeholder="예) 잔잔하고 감성적인 곡"
+                             className="w-full h-12 pl-10 pr-10 rounded-[14px] bg-surface/60 border border-border/60 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                         />
+                         {searchInput && (
+
+--- a/app/(app)/song/[id]/page.tsx	2026-10-15 01:07:06.885146900 +0900
++++ b/app/(app)/song/[id]/page.tsx	1970-01-01 09:00:00.000000000 +0900
+@@ -1,165 +0,0 @@
+-"use client"
+-
+-import * as React from "react"
+-import Image from "next/image"
+-import Link from "next/link"
+-import { useParams } from "next/navigation"
+-import { Bookmark, BookmarkCheck, Play, Music2, Clock, Hash, KeyRound, AlertTriangle } from "lucide-react"
+-import { PageHeader } from "@/components/page-header"
+-import { Button } from "@/components/ui/button"
+-import { Badge } from "@/components/ui/badge"
+-import { Separator } from "@/components/ui/separator"
+-import { SONGS, recommendSongs, noteToMidi } from "@/lib/songs"
+-import { useStore } from "@/lib/store"
+-import { difficultyLabel, SongCard } from "@/components/song-card"
+-
+-export default function SongDetailPage() {
+-  const params = useParams<{ id: string }>()
+-  const id = params?.id
+-  const song = SONGS.find((s) => s.id === id)
+-  const { profile, toggleLibrary } = useStore()
+-
+-  if (!song) {
+-    return (
+-      <main className="px-4 pb-6">
+-        <PageHeader title="곡 정보" />
+-        <div className="mt-10 text-center text-sm text-muted-foreground">곡을 찾을 수 없어요.</div>
+-      </main>
+-    )
+-  }
+-
+-  const inLib = profile.library.includes(song.id)
+-  const diff = difficultyLabel(song.difficulty)
+-
+-  const similar = React.useMemo(
+-    () => recommendSongs(song.highestNote, { limit: 6, tolerance: 3, exclude: [song.id] }),
+-    [song]
+-  )
+-
+-  const fitInfo = profile.range
+-    ? (() => {
+-        const userMidi = noteToMidi(profile.range!.comfortableHigh)
+-        const songMidi = noteToMidi(song.highestNote)
+-        const diff = songMidi - userMidi
+-        const abs = Math.abs(diff)
+-        if (abs <= 1) return { label: "딱 맞아요", variant: "success" as const, hint: "편안하게 부를 수 있어요" }
+-        if (diff > 1 && diff <= 4) return { label: "조금 어려워요", variant: "warning" as const, hint: `${diff}반음 더 높음` }
+-        if (diff > 4) return { label: "고난도", variant: "destructive" as const, hint: `${diff}반음 더 높음` }
+-        return { label: "여유 있어요", variant: "muted" as const, hint: `${abs}반음 낮음` }
+-      })()
+-    : null
+-
+-  return (
+-    <main className="pb-6">
+-      <PageHeader title="" right={
+-        <button
+-          onClick={() => toggleLibrary(song.id)}
+-          className="h-10 w-10 grid place-items-center rounded-[10px] hover:bg-muted"
+-          aria-label={inLib ? "보관함 해제" : "보관함 저장"}
+-        >
+-          {inLib ? <BookmarkCheck className="h-5 w-5 text-primary" /> : <Bookmark className="h-5 w-5" />}
+-        </button>
+-      } className="px-4" />
+-
+-      <div className="px-4">
+-        <div className="relative aspect-square rounded-[16px] overflow-hidden border border-border/60">
+-          <Image src={song.cover} alt={song.title} fill className="object-cover" />
+-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+-          <div className="absolute bottom-3 left-4 right-4">
+-            <Badge variant={diff.variant}>{diff.label}</Badge>
+-            <h1 className="mt-2 text-2xl font-extrabold leading-tight">{song.title}</h1>
+-            <div className="text-sm text-white/85">{song.artist}</div>
+-          </div>
+-        </div>
+-      </div>
+-
+-      <div className="px-4 mt-5 flex gap-2">
+-        <Button variant="brand" size="lg" className="flex-1">
+-          <Play className="h-4 w-4" /> 미리듣기
+-        </Button>
+-        <Button
+-          variant={inLib ? "secondary" : "outline"}
+-          size="lg"
+-          className="px-4"
+-          onClick={() => toggleLibrary(song.id)}
+-        >
+-          {inLib ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+-        </Button>
+-      </div>
+-
+-      {fitInfo && (
+-        <div className="mx-4 mt-5 rounded-[14px] bg-card border border-border/60 p-4">
+-          <div className="flex items-center gap-2 mb-2">
+-            <KeyRound className="h-4 w-4 text-primary" />
+-            <span className="text-sm font-bold">내 음역대 적합도</span>
+-          </div>
+-          <div className="flex items-center justify-between">
+-            <Badge variant={fitInfo.variant}>{fitInfo.label}</Badge>
+-            <span className="text-xs text-muted-foreground">{fitInfo.hint}</span>
+-          </div>
+-          <Separator className="my-3" />
+-          <div className="grid grid-cols-2 gap-3 text-center">
+-            <div className="rounded-[10px] bg-surface/60 p-3">
+-              <div className="text-[10px] text-muted-foreground">곡 최고음</div>
+-              <div className="text-lg font-extrabold text-brand">{song.highestNote}</div>
+-            </div>
+-            <div className="rounded-[10px] bg-surface/60 p-3">
+-              <div className="text-[10px] text-muted-foreground">내 편한 고음</div>
+-              <div className="text-lg font-extrabold">{profile.range!.comfortableHigh}</div>
+-            </div>
+-          </div>
+-          {fitInfo.variant === "destructive" && (
+-            <div className="mt-3 flex items-start gap-2 text-xs rounded-[10px] bg-destructive/15 text-destructive p-3">
+-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+-              <div>키를 낮춰 부르거나, 음역대 비슷한 다른 곡을 추천드려요.</div>
+-            </div>
+-          )}
+-          <Button variant="ghost" size="sm" className="w-full mt-3" asChild>
+-            <Link href="/mypage/key-adjustment">키 조정해보기</Link>
+-          </Button>
+-        </div>
+-      )}
+-
+-      <div className="mx-4 mt-5 rounded-[14px] bg-card border border-border/60 p-4">
+-        <div className="text-sm font-bold mb-3">곡 정보</div>
+-        <div className="grid grid-cols-2 gap-y-3 text-xs">
+-          <Meta icon={<Music2 className="h-3.5 w-3.5" />} label="장르" value={song.genre.toUpperCase()} />
+-          <Meta icon={<Clock className="h-3.5 w-3.5" />} label="재생시간" value={song.duration} />
+-          <Meta icon={<Hash className="h-3.5 w-3.5" />} label="TJ 번호" value={song.tjNumber || "—"} />
+-          <Meta icon={<Hash className="h-3.5 w-3.5" />} label="금영 번호" value={song.kyNumber || "—"} />
+-          <Meta label="발매" value={String(song.releaseYear)} />
+-          <Meta label="최저음" value={song.lowestNote} />
+-        </div>
+-      </div>
+-
+-      {similar.length > 0 && (
+-        <section className="mt-6 px-4">
+-          <h2 className="text-base font-bold mb-3">비슷한 음역대 곡</h2>
+-          <div className="space-y-2">
+-            {similar.map((s) => (
+-              <SongCard key={s.id} song={s} />
+-            ))}
+-          </div>
+-        </section>
+-      )}
+-    </main>
+-  )
+-}
+-
+-function Meta({
+-  icon,
+-  label,
+-  value,
+-}: {
+-  icon?: React.ReactNode
+-  label: string
+-  value: string
+-}) {
+-  return (
+-    <div className="flex items-center gap-2">
+-      {icon && <span className="text-muted-foreground">{icon}</span>}
+-      <span className="text-muted-foreground">{label}</span>
+-      <span className="ml-auto font-semibold">{value}</span>
+-    </div>
+-  )
+-}
+
+--- a/app/(app)/songs/[id]/page.tsx	2026-10-15 01:07:06.885197135 +0900
++++ b/app/(app)/songs/[id]/page.tsx	2026-10-15 01:08:14.081712971 +0900
+@@ -2,28 +2,21 @@
+ 
+ import * as React from "react"
+ import { useParams, useRouter } from "next/navigation"
+-import { ArrowLeft, Bookmark, BookmarkCheck, Play, Pause } from "lucide-react"
++import { ArrowLeft } from "lucide-react"
+ import { api, type SongResponse } from "@/lib/api"
+ import { difficultyTier, colorFromString } from "@/lib/song-display"
+-import { fetchArtwork } from "@/lib/artwork-cache"
+ import { BackendSongCard } from "@/components/backend-song-card"
+-import { useStore } from "@/lib/store"
++import { SongCredit } from "@/components/song-credit"
+ 
+ export default function SongDetailPage() {
+   const params = useParams<{ id: string }>()
+   const router = useRouter()
+   const songId = Number(params.id)
+-  const { bookmarkedSongIds } = useStore()
+-  const isSaved = bookmarkedSongIds.has(songId)
+ 
+   const [song, setSong] = React.useState<SongResponse | null>(null)
+   const [similar, setSimilar] = React.useState<SongResponse[]>([])
+-  const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
+-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+   const [loading, setLoading] = React.useState(true)
+   const [error, setError] = React.useState("")
+-  const [playing, setPlaying] = React.useState(false)
+-  const audioRef = React.useRef<HTMLAudioElement | null>(null)
+ 
+   React.useEffect(() => {
+     if (!songId) return
+@@ -35,13 +28,6 @@
+         if (cancelled) return
+         setSong(s)
+ 
+-        // real cover + real 30s preview, looked up by title/artist
+-        fetchArtwork(s.title, s.artist).then((data) => {
+-          if (cancelled) return
+-          setArtworkUrl(data.artworkUrl)
+-          setPreviewUrl(data.previewUrl)
+-        })
+-
+         // "similar range" = other songs within 3 semitones of this one's max note
+         const all: SongResponse[] = await api.getSongs()
+         if (cancelled) return
+@@ -61,17 +47,6 @@
+     }
+   }, [songId])
+ 
+-  function togglePlay() {
+-    if (!audioRef.current) return
+-    if (playing) {
+-      audioRef.current.pause()
+-      setPlaying(false)
+-    } else {
+-      audioRef.current.play()
+-      setPlaying(true)
+-    }
+-  }
+-
+   if (loading) {
+     return <div className="px-4 pt-10 text-center text-sm text-muted-foreground">불러오는 중...</div>
+   }
+@@ -90,16 +65,12 @@
+           </button>
+         </header>
+       <div className="rounded-[16px] overflow-hidden border border-border mb-5">
+-        {artworkUrl ? (
+-          <img src={artworkUrl} alt={song.title} className="w-full aspect-square object-cover" />
+-        ) : (
+-          <div
+-            className="w-full aspect-square grid place-items-center text-white text-5xl font-extrabold"
+-            style={{ backgroundColor: bg }}
+-          >
+-            {song.title.charAt(0)}
+-          </div>
+-        )}
++        <div
++          className="w-full aspect-square grid place-items-center text-white text-5xl font-extrabold"
++          style={{ backgroundColor: bg }}
++        >
++          {song.title.charAt(0)}
++        </div>
+         <div className="p-4">
+           <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 ${tier.className}`}>
+             {tier.label}
+@@ -109,26 +80,6 @@
+         </div>
+       </div>
+ 
+-      {previewUrl ? (
+-        <button
+-          onClick={togglePlay}
+-          className="w-full h-12 rounded-[10px] bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 mb-5"
+-        >
+-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+-          {playing ? "일시정지" : "미리듣기 (30초)"}
+-          <audio
+-            ref={audioRef}
+-            src={previewUrl}
+-            onEnded={() => setPlaying(false)}
+-            className="hidden"
+-          />
+-        </button>
+-      ) : (
+-        <div className="w-full h-12 rounded-[10px] bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center mb-5">
+-          미리듣기를 찾을 수 없어요
+-        </div>
+-      )}
+-
+       <div className="rounded-[14px] border border-border bg-card p-4 mb-6">
+         <div className="text-sm font-bold mb-3">곡 정보</div>
+         <div className="grid grid-cols-2 gap-y-2 text-sm">
+@@ -139,6 +90,9 @@
+           <div className="text-muted-foreground">최고음</div>
+           <div className="text-right">{song.maxNoteLabel}</div>
+         </div>
++        <div className="mt-3 pt-3 border-t border-border/60">
++          <SongCredit title={song.title} artist={song.artist} />
++        </div>
+       </div>
+ 
+       <div className="text-sm font-bold px-1 mb-3">비슷한 음역대 곡</div>
+
+--- a/components/analysis-watcher.tsx	2026-10-15 01:07:06.887078856 +0900
++++ b/components/analysis-watcher.tsx	1970-01-01 09:00:00.000000000 +0900
+@@ -1,117 +0,0 @@
+-"use client"
+-
+-import * as React from "react"
+-import { X, Sparkles } from "lucide-react"
+-import { api, buildSongKey } from "@/lib/api"
+-import { getWatches, removeWatches, WATCH_EVENT } from "@/lib/analysis-watch"
+-
+-type Toast = { id: number; title: string; artist: string; ok: boolean; leaving?: boolean }
+-
+-const POLL_MS = 15000
+-const TOAST_MS = 9000
+-
+-// 앱 어느 화면에 있든, "분석 요청"한 곡의 분석이 끝나면 화면 위쪽에 알림을 띄운다.
+-export function AnalysisWatcher() {
+-    const [toasts, setToasts] = React.useState<Toast[]>([])
+-    const nextId = React.useRef(1)
+-
+-    // 바로 지우지 않고, 위로 사라지는 애니메이션을 보여준 뒤 제거한다.
+-    const dismiss = React.useCallback((id: number) => {
+-        setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)))
+-        setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 280)
+-    }, [])
+-
+-    const check = React.useCallback(async () => {
+-        const watches = getWatches()
+-        if (watches.length === 0) return
+-        try {
+-            const ranges = await api.getVocalRanges(watches.map((w) => ({ title: w.title, artist: w.artist })))
+-            const statuses = await api.getAnalysisStatuses(watches.map((w) => ({ title: w.title, artist: w.artist })))
+-            const finished: string[] = []
+-            const newToasts: Toast[] = []
+-            for (const w of watches) {
+-                const key = buildSongKey(w.title, w.artist)
+-                const done = !!ranges?.[key]
+-                const failed = statuses?.[key] === "FAILED"
+-                if (done || failed) {
+-                    finished.push(key)
+-                    newToasts.push({ id: nextId.current++, title: w.title, artist: w.artist, ok: done })
+-                }
+-            }
+-            if (finished.length > 0) {
+-                removeWatches(finished)
+-                setToasts((t) => [...t, ...newToasts])
+-                newToasts.forEach((n) => setTimeout(() => dismiss(n.id), TOAST_MS))
+-            }
+-        } catch {
+-            // 네트워크 오류는 다음 주기에 다시 확인
+-        }
+-    }, [dismiss])
+-
+-    React.useEffect(() => {
+-        check()
+-        const t = setInterval(check, POLL_MS)
+-        window.addEventListener(WATCH_EVENT, check)
+-        return () => {
+-            clearInterval(t)
+-            window.removeEventListener(WATCH_EVENT, check)
+-        }
+-    }, [check])
+-
+-    if (toasts.length === 0) return null
+-
+-    return (
+-        <div
+-            className="fixed inset-x-0 z-[100] mx-auto flex max-w-md flex-col gap-2 px-4 pointer-events-none"
+-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 6px)" }}
+-        >
+-            <style>{`
+-        @keyframes fitchToastIn { from { opacity: 0; transform: translateY(-14px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+-        @keyframes fitchToastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-14px) scale(0.97); } }
+-      `}</style>
+-            {toasts.map((t) => (
+-                <div
+-                    key={t.id}
+-                    style={{
+-                        animation: t.leaving
+-                            ? "fitchToastOut 0.28s ease-in forwards"
+-                            : "fitchToastIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+-                    }}
+-                    className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-primary/30 bg-card p-3 shadow-2xl shadow-black/50"
+-                >
+-                    <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+-                    <div className="min-w-0 flex-1">
+-                        <div className="truncate text-sm font-bold">
+-                            {t.ok ? "분석이 끝났어요" : "분석에 실패했어요"}
+-                        </div>
+-                        <div className="truncate text-xs text-muted-foreground">
+-                            {t.title} · {t.artist}
+-                        </div>
+-                        <div className="mt-0.5 truncate text-[11px] text-primary/80">
+-                            {t.ok ? "보관함 > 분석 요청에서도 볼 수 있어요" : "보관함 > 분석 요청에서 다시 요청할 수 있어요"}
+-                        </div>
+-                    </div>
+-                    {t.ok && (
+-                        <button
+-                            type="button"
+-                            onClick={() => {
+-                                window.location.href = `/mypage/key-adjustment?q=${encodeURIComponent(t.title)}`
+-                            }}
+-                            className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+-                        >
+-                            확인하기
+-                        </button>
+-                    )}
+-                    <button
+-                        type="button"
+-                        onClick={() => dismiss(t.id)}
+-                        aria-label="닫기"
+-                        className="shrink-0 text-muted-foreground hover:text-foreground"
+-                    >
+-                        <X className="h-4 w-4" />
+-                    </button>
+-                </div>
+-            ))}
+-        </div>
+-    )
+-}
+\ No newline at end of file
+
+--- a/components/backend-song-card.tsx	2026-10-15 01:07:06.887202969 +0900
++++ b/components/backend-song-card.tsx	2026-10-15 01:08:14.078568991 +0900
+@@ -4,7 +4,6 @@
+ import Link from "next/link"
+ import type { SongResponse } from "@/lib/api"
+ import { difficultyTier, colorFromString } from "@/lib/song-display"
+-import { fetchArtwork } from "@/lib/artwork-cache"
+ import { noteToKorean } from "@/lib/songs"
+ 
+ // 다른 화면(인기차트, 유사 음색 아티스트 추천 등)의 ChartSongRow/ChartPodiumItem에서
+@@ -25,37 +24,19 @@
+ export function BackendSongCard({ song }: { song: SongResponse }) {
+   const tier = difficultyTier(song.maxNote)
+   const bg = colorFromString(song.title + song.artist)
+-  const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
+-
+-  React.useEffect(() => {
+-    let cancelled = false
+-    fetchArtwork(song.title, song.artist).then((data) => {
+-      if (!cancelled && data.artworkUrl) setArtworkUrl(data.artworkUrl)
+-    })
+-    return () => {
+-      cancelled = true
+-    }
+-  }, [song.title, song.artist])
+ 
+   return (
+       <Link
+           href={`/songs/${song.songId}`}
+           className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3 transition-colors hover:bg-card/70"
+       >
+-        {artworkUrl ? (
+-            <img
+-                src={artworkUrl}
+-                alt={song.title}
+-                className="h-14 w-14 shrink-0 rounded-[10px] object-cover"
+-            />
+-        ) : (
+-            <div
+-                className="h-14 w-14 shrink-0 rounded-[10px] grid place-items-center text-white text-lg font-extrabold"
+-                style={{ backgroundColor: bg }}
+-            >
+-              {song.title.charAt(0)}
+-            </div>
+-        )}
++        {/* 전시회: 저작권 프리 곡이라 앨범 커버(iTunes) 조회 없이 글자 썸네일만 쓴다 */}
++        <div
++            className="h-14 w-14 shrink-0 rounded-[10px] grid place-items-center text-white text-lg font-extrabold"
++            style={{ backgroundColor: bg }}
++        >
++          {song.title.charAt(0)}
++        </div>
+         <div className="min-w-0 flex-1">
+           <div className="truncate text-sm font-bold">{song.title}</div>
+           <div className="truncate text-xs text-muted-foreground">{song.artist}</div>
+
+--- a/components/bottom-nav.tsx	2026-10-15 01:07:06.887267848 +0900
++++ b/components/bottom-nav.tsx	2026-10-15 01:08:36.033044565 +0900
+@@ -5,7 +5,6 @@
+ import { usePathname } from "next/navigation"
+ import { Home, Wand2, Heart, TrendingUp, User } from "lucide-react"
+ import { cn } from "@/lib/utils"
+-import { AnalysisWatcher } from "@/components/analysis-watcher"
+ 
+ const items = [
+     { href: "/library", label: "보관함", icon: Heart },
+@@ -61,7 +60,6 @@
+ 
+     return (
+         <>
+-            <AnalysisWatcher />
+             <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.075rem)] pt-2">
+                 <div
+                     className={cn(
+
+--- a/components/chart-song-row.tsx	2026-10-15 01:07:06.887285384 +0900
++++ b/components/chart-song-row.tsx	2026-10-15 01:08:36.030773225 +0900
+@@ -7,11 +7,15 @@
+ import { noteToMidi } from "@/lib/songs"
+ import { fetchArtwork } from "@/lib/artwork-cache"
+ import { usePreviewPlayer } from "@/lib/audio-preview"
+-import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
+ import { stopOtherPreviews } from "@/lib/preview-bus"
+-import { api, buildSongKey } from "@/lib/api"
+-import { addWatch } from "@/lib/analysis-watch"
+ import { koreanArtistName } from "@/lib/artist-aliases"
++import { SongCredit } from "@/components/song-credit"
++
++// 전시회: 우리 DB의 저작권 프리(CC BY) 곡은 id가 "song-{songId}" 형태다.
++// 이 곡들은 iTunes 앨범커버/미리듣기를 조회하지 않는다 (제목이 같은 다른 곡이 잡힐 수 있고, 음원을 쓰지 않는 방침).
++export function isOwnSong(id: string): boolean {
++    return id.startsWith("song-")
++}
+ 
+ export type ChartEntryWithRange = ChartEntry & {
+     minNote?: number
+@@ -123,7 +127,7 @@
+         }
+     }
+ 
+-    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
++    if (previewUrl === null || isOwnSong(entry.id)) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
+ 
+     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
+     const icon = loading ? (
+@@ -212,92 +216,36 @@
+     )
+ }
+ 
+-// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡/키 조정 음원 재생
++// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡 미리듣기
+ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
+     const { profile } = useStore()
+     const range = profile.range
+-    // 분석 요청이 끝나서 새로 알게 된 음역대 (원래 entry에 없던 곡용)
+-    const [live, setLive] = React.useState<{ minNote: number; maxNote: number } | null>(null)
+-    const eff: ChartEntryWithRange = {
+-        ...entry,
+-        minNote: entry.minNote ?? live?.minNote,
+-        maxNote: entry.maxNote ?? live?.maxNote,
+-    }
+-    const shift = computeKeySemitoneShift(eff, range)
++    const shift = computeKeySemitoneShift(entry, range)
+     const preview = usePreviewPlayer()
+-    const keyPlayer = useKeyAdjustPreviewPlayer()
+     const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
+     const [loadingOrig, setLoadingOrig] = React.useState(false)
+ 
+-    const hasInfo = eff.minNote != null && eff.maxNote != null && !!range
++    const hasInfo = entry.minNote != null && entry.maxNote != null && !!range
+     const tooBig = Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES
+     const canAdjust = shift !== 0 && !tooBig
+     const origPlaying = preview.playingId === entry.id
+-    const adjPlaying = keyPlayer.playingId === entry.id
+-    const adjLoading = adjPlaying && keyPlayer.state === "loading"
+ 
+     // 패널이 닫히면(=이 컴포넌트가 사라지면) 이 곡의 소리도 같이 끈다.
+     const playingRef = React.useRef(false)
+-    playingRef.current = origPlaying || adjPlaying
++    playingRef.current = origPlaying
+     React.useEffect(() => {
+         return () => {
+             if (playingRef.current) stopOtherPreviews("")
+         }
+     }, [])
+ 
+-    // ---- 분석 요청 (음역 정보가 없는 곡) ----
+-    const songKey = buildSongKey(entry.title, entry.artist)
+-    const needsAnalysis = !!range && entry.minNote == null
+-    const [analysis, setAnalysis] = React.useState<"checking" | "none" | "PENDING" | "FAILED" | "requesting">("checking")
+-
+-    async function refreshAnalysis() {
+-        try {
+-            const ranges = await api.getVocalRanges([{ title: entry.title, artist: entry.artist }])
+-            const r = ranges?.[songKey]
+-            if (r && r.minNote != null && r.maxNote != null) {
+-                setLive({ minNote: r.minNote, maxNote: r.maxNote })
+-                return
+-            }
+-            const st = await api.getAnalysisStatuses([{ title: entry.title, artist: entry.artist }])
+-            const s = st?.[songKey]
+-            if (s === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
+-            setAnalysis(s === "PENDING" ? "PENDING" : s === "FAILED" ? "FAILED" : "none")
+-        } catch {
+-            setAnalysis("none")
+-        }
+-    }
+-
+-    async function requestAnalysis() {
+-        setAnalysis("requesting")
+-        try {
+-            const r = await api.requestSongAnalysis({ title: entry.title, artist: entry.artist })
+-            if (r.status === "DONE") await refreshAnalysis()
+-            else {
+-                if (r.status === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
+-                setAnalysis(r.status === "PENDING" ? "PENDING" : "none")
+-            }
+-        } catch {
+-            setAnalysis("none")
+-        }
+-    }
+-
+-    React.useEffect(() => {
+-        if (!needsAnalysis) return
+-        refreshAnalysis()
+-        // eslint-disable-next-line react-hooks/exhaustive-deps
+-    }, [entry.title, entry.artist, needsAnalysis])
+-
+-    // 분석 중이면 15초마다 결과가 올라왔는지 확인
+-    React.useEffect(() => {
+-        if (analysis !== "PENDING" || live) return
+-        const t = setInterval(refreshAnalysis, 15000)
+-        return () => clearInterval(t)
+-        // eslint-disable-next-line react-hooks/exhaustive-deps
+-    }, [analysis, live])
+-
+     async function getUrl(): Promise<string | null> {
+         if (previewUrl) return previewUrl
+         if (previewUrl === null) return null
++        if (isOwnSong(entry.id)) {
++            setPreviewUrl(null)
++            return null
++        }
+         try {
+             const data = await fetchArtwork(entry.title, entry.artist)
+             setPreviewUrl(data.previewUrl ?? null)
+@@ -325,27 +273,18 @@
+         if (url) preview.toggle(entry.id, url)
+     }
+ 
+-    async function playAdjusted() {
+-        if (adjPlaying) {
+-            keyPlayer.toggle(entry.id, "", 0)
+-            return
+-        }
+-        const url = await getUrl()
+-        if (url) keyPlayer.toggle(entry.id, url, shift)
+-    }
+-
+     let headline: string
+     let sub = ""
+     if (!range) {
+         headline = "음역대를 재면 추천 키를 알려드려요"
+     } else if (!hasInfo) {
+-        headline = "아직 분석되지 않은 곡이에요"
++        headline = "음역 정보가 없는 곡이에요"
+     } else if (shift === 0) {
+         headline = "내 음역대에 딱이에요 🎯"
+     } else if (tooBig) {
+-        // 조정해야 할 키 수는 알려주되, 차이가 커서 키를 바꾼 음원(내 키 버전)은 제공하지 않는다.
++        // 조정해야 할 키 수만 알려준다.
+         headline = `${shift > 0 ? "+" : ""}${shift}키 정도 필요해요`
+-        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요. 내 키 버전은 제공하지 않아요"
++        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해질 수 있어요"
+     } else {
+         headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
+     }
+@@ -362,28 +301,9 @@
+                 </div>
+                 {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+             </div>
+-            {range && !hasInfo && analysis !== "checking" && (
+-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+-                    {analysis === "PENDING" || analysis === "requesting" ? (
+-                        <>
+-                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+-                            <span>{analysis === "requesting" ? "요청하는 중이에요..." : "분석 중이에요. 이 곡을 열어두면 끝나는 대로 바뀌어요"}</span>
+-                        </>
+-                    ) : (
+-                        <>
+-                            <button
+-                                onClick={requestAnalysis}
+-                                className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground h-8 px-3 text-xs font-semibold"
+-                            >
+-                                <Wand2 className="h-3.5 w-3.5" />
+-                                {analysis === "FAILED" ? "다시 분석 요청" : "분석 요청"}
+-                            </button>
+-                            <span>{analysis === "FAILED" ? "분석에 실패했어요" : "분석에는 몇 분 걸려요"}</span>
+-                        </>
+-                    )}
+-                </div>
+-            )}
+-            {previewUrl === null ? (
++            {isOwnSong(entry.id) ? (
++                <SongCredit title={entry.title} artist={entry.artist} />
++            ) : previewUrl === null ? (
+                 <div className="text-xs text-muted-foreground">
+                     이 곡은 미리듣기를 제공하지 않아요
+                 </div>
+@@ -397,16 +317,6 @@
+                         {loadingOrig || previewUrl === undefined ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                         <span>{origPlaying ? "재생 중" : "미리듣기"}</span>
+                     </button>
+-                    {canAdjust && (
+-                        <button
+-                            onClick={playAdjusted}
+-                            disabled={previewUrl === undefined}
+-                            className={`${btnBase} bg-black/70 text-brand hover:bg-black/85 disabled:opacity-50`}
+-                        >
+-                            {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
+-                            <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
+-                        </button>
+-                    )}
+                 </div>
+             )}
+         </div>
+
+--- a/components/my-analysis-requests.tsx	2026-10-15 01:07:06.887453023 +0900
++++ b/components/my-analysis-requests.tsx	1970-01-01 09:00:00.000000000 +0900
+@@ -1,117 +0,0 @@
+-"use client"
+-
+-import * as React from "react"
+-import Link from "next/link"
+-import { Loader2, AlertCircle, Mic2 } from "lucide-react"
+-import { api, buildSongKey } from "@/lib/api"
+-import { fetchArtwork } from "@/lib/artwork-cache"
+-import { ChartSongRow, type ChartEntryWithRange } from "@/components/chart-song-row"
+-
+-type Req = { title: string; artist: string; status: string }
+-type Range = { minNote?: number; maxNote?: number }
+-
+-function RequestRow({ req, index, range }: { req: Req; index: number; range?: Range }) {
+-    const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
+-
+-    React.useEffect(() => {
+-        let cancelled = false
+-        fetchArtwork(req.title, req.artist)
+-            .then((d) => {
+-                if (!cancelled) setArtworkUrl(d.artworkUrl ?? null)
+-            })
+-            .catch(() => {})
+-        return () => {
+-            cancelled = true
+-        }
+-    }, [req.title, req.artist])
+-
+-    const entry = {
+-        id: `req-${buildSongKey(req.title, req.artist)}`,
+-        rank: index + 1,
+-        title: req.title,
+-        artist: req.artist,
+-        artworkUrl: artworkUrl ?? "",
+-        minNote: range?.minNote,
+-        maxNote: range?.maxNote,
+-    } as unknown as ChartEntryWithRange
+-
+-    const done = range?.minNote != null && range?.maxNote != null
+-    return (
+-        <div>
+-            <ChartSongRow entry={entry} />
+-            {!done && (
+-                <div className="mt-1.5 px-1">
+-                    {req.status === "FAILED" ? (
+-                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2.5 py-1 text-[11px] font-semibold text-destructive">
+-              <AlertCircle className="h-3 w-3" /> 분석 실패 · 곡을 열어 다시 요청해보세요
+-            </span>
+-                    ) : (
+-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">
+-              <Loader2 className="h-3 w-3 animate-spin" /> 분석 중이에요
+-            </span>
+-                    )}
+-                </div>
+-            )}
+-        </div>
+-    )
+-}
+-
+-export function MyAnalysisRequests() {
+-    const [items, setItems] = React.useState<Req[]>([])
+-    const [ranges, setRanges] = React.useState<Record<string, Range>>({})
+-    const [loading, setLoading] = React.useState(true)
+-
+-    React.useEffect(() => {
+-        let cancelled = false
+-
+-        async function load() {
+-            try {
+-                const list = await api.getMyAnalysisRequests()
+-                if (cancelled) return
+-                setItems(list)
+-                const map = await api.getVocalRanges(list.map((r) => ({ title: r.title, artist: r.artist })))
+-                if (!cancelled) setRanges(map as Record<string, Range>)
+-            } catch {
+-                // 불러오지 못하면 빈 목록
+-            } finally {
+-                if (!cancelled) setLoading(false)
+-            }
+-        }
+-
+-        load()
+-        // 분석 중인 곡이 있으면 15초마다 새로고침 (목록 화면을 보고 있어도 완료되면 바뀌게)
+-        const t = setInterval(load, 15000)
+-        return () => {
+-            cancelled = true
+-            clearInterval(t)
+-        }
+-    }, [])
+-
+-    if (loading) {
+-        return <div className="text-center text-xs text-muted-foreground py-10">불러오는 중...</div>
+-    }
+-
+-    if (items.length === 0) {
+-        return (
+-            <div className="mt-2 text-center py-10">
+-                <div className="mx-auto h-16 w-16 rounded-full bg-surface/60 border border-border grid place-items-center">
+-                    <Mic2 className="h-7 w-7 text-muted-foreground" />
+-                </div>
+-                <p className="mt-3 text-xs text-muted-foreground max-w-xs mx-auto">
+-                    아직 분석 요청한 곡이 없어요. 내 키 찾기에서 곡을 검색하고 분석을 요청해보세요.
+-                </p>
+-                <Link href="/mypage/key-adjustment" className="mt-4 inline-block text-xs font-semibold text-primary">
+-                    내 키 찾기로 가기
+-                </Link>
+-            </div>
+-        )
+-    }
+-
+-    return (
+-        <div className="space-y-2">
+-            {items.map((r, i) => (
+-                <RequestRow key={buildSongKey(r.title, r.artist)} req={r} index={i} range={ranges[buildSongKey(r.title, r.artist)]} />
+-            ))}
+-        </div>
+-    )
+-}
+\ No newline at end of file
+
+--- a/components/song-credit.tsx	1970-01-01 09:00:00.000000000 +0900
++++ b/components/song-credit.tsx	2026-10-15 01:08:00.898652178 +0900
+@@ -0,0 +1,24 @@
++import * as React from "react"
++import { findCredit, type SongCreditInfo } from "@/lib/credits"
++
++// CC BY 표시: "제목" by 작가 · Free Music Archive · CC BY 4.0
++export function CreditLine({ credit, className }: { credit: SongCreditInfo; className?: string }) {
++  return (
++    <p className={className ?? "text-[11px] leading-relaxed text-muted-foreground"}>
++      <a href={credit.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
++        &ldquo;{credit.title}&rdquo;
++      </a>{" "}
++      by {credit.artist} · Free Music Archive ·{" "}
++      <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
++        {credit.license}
++      </a>
++    </p>
++  )
++}
++
++// 곡 title/artist로 출처를 찾아 보여준다. 출처 정보가 없는 곡이면 아무것도 그리지 않는다.
++export function SongCredit({ title, artist, className }: { title: string; artist: string; className?: string }) {
++  const credit = findCredit(title, artist)
++  if (!credit) return null
++  return <CreditLine credit={credit} className={className} />
++}
+
+--- a/lib/analysis-watch.ts	2026-10-15 01:07:06.889229412 +0900
++++ b/lib/analysis-watch.ts	1970-01-01 09:00:00.000000000 +0900
+@@ -1,44 +0,0 @@
+-// "분석 요청"한 곡을 브라우저에 기억해 두는 목록.
+-// 사용자가 다른 화면으로 이동하거나 패널을 닫아도, AnalysisWatcher가 이 목록을 보고
+-// 분석이 끝났는지 확인해서 화면 안 알림(토스트)을 띄운다.
+-
+-import { buildSongKey } from "@/lib/api"
+-
+-const STORAGE_KEY = "analysisWatches"
+-export const WATCH_EVENT = "analysis-watch-changed"
+-
+-export type WatchedSong = { title: string; artist: string }
+-
+-export function getWatches(): WatchedSong[] {
+-    if (typeof window === "undefined") return []
+-    try {
+-        const raw = localStorage.getItem(STORAGE_KEY)
+-        const list = raw ? JSON.parse(raw) : []
+-        return Array.isArray(list) ? list : []
+-    } catch {
+-        return []
+-    }
+-}
+-
+-function save(list: WatchedSong[]) {
+-    try {
+-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+-    } catch {
+-        // 저장소를 못 쓰는 환경이면 알림만 포기
+-    }
+-    window.dispatchEvent(new Event(WATCH_EVENT))
+-}
+-
+-export function addWatch(song: WatchedSong) {
+-    if (typeof window === "undefined") return
+-    const key = buildSongKey(song.title, song.artist)
+-    const list = getWatches()
+-    if (list.some((s) => buildSongKey(s.title, s.artist) === key)) return
+-    save([...list, { title: song.title, artist: song.artist }])
+-}
+-
+-export function removeWatches(keys: string[]) {
+-    if (typeof window === "undefined" || keys.length === 0) return
+-    const set = new Set(keys)
+-    save(getWatches().filter((s) => !set.has(buildSongKey(s.title, s.artist))))
+-}
+\ No newline at end of file
+
+--- a/lib/credits.ts	1970-01-01 09:00:00.000000000 +0900
++++ b/lib/credits.ts	2026-10-15 01:08:00.893674940 +0900
+@@ -0,0 +1,234 @@
++// 전시회용 저작권 프리(CC BY) 곡의 출처 정보. Free Music Archive 기준.
++// 곡의 title/artist는 DB에 등록된 값과 같아야 매칭된다 (buildSongKey 기준, 공백만 정규화).
++
++export type SongCreditInfo = {
++  title: string
++  artist: string
++  license: string
++  licenseUrl: string
++  sourceUrl: string
++}
++
++export const SONG_CREDITS: SongCreditInfo[] = [
++  {
++    "title": "사랑의 빈도",
++    "artist": "Adeline Yeo (HP)",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/adeline-yeo-hp/single/-13/"
++  },
++  {
++    "title": "Canvas of the Sky",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/canvas-of-the-sky/"
++  },
++  {
++    "title": "Can’t Wait Till I Graduate",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/cant-wait-till-i-graduate/"
++  },
++  {
++    "title": "New day",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/sunset-reggae-dreams/new-day-3/"
++  },
++  {
++    "title": "Quiet! None can hear",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/quiet-none-can-hear/"
++  },
++  {
++    "title": "So much music’s playing in the world",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/so-much-musics-playing/"
++  },
++  {
++    "title": "Who said",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/who-said/"
++  },
++  {
++    "title": "Winter (Зима)",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/winter-zima/"
++  },
++  {
++    "title": "You’ve got to be kidding",
++    "artist": "Andrey Petrov",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/andrey-petrov/single/youve-got-to-be-kidding/"
++  },
++  {
++    "title": "All For Nothing",
++    "artist": "Anthem of Rain",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/anthem-of-rain/freedom/all-for-nothing/"
++  },
++  {
++    "title": "Lost Without You",
++    "artist": "Anthem of Rain",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/anthem-of-rain/freedom/lost-without-you/"
++  },
++  {
++    "title": "Rock This House",
++    "artist": "Anthem of Rain",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/anthem-of-rain/freedom/rock-this-house/"
++  },
++  {
++    "title": "Secret Hopes",
++    "artist": "Anthem of Rain",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/anthem-of-rain/freedom/secret-hopes/"
++  },
++  {
++    "title": "Evil Cannot Create",
++    "artist": "Elephant Funeral",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/Caleb_Lemond/The_Learning_Curve/Evil_Cannot_Create/"
++  },
++  {
++    "title": "mad scientist",
++    "artist": "Fog Lake",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/Fog_Lake/Virgo_indigo/Fog_Lake_-_virgo_indigo_-_03_mad_scientist/"
++  },
++  {
++    "title": "nocturnal blues",
++    "artist": "Fog Lake",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/Fog_Lake/Virgo_indigo/Fog_Lake_-_virgo_indigo_-_09_nocturnal_blues/"
++  },
++  {
++    "title": "pretty lights",
++    "artist": "Fog Lake",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/Fog_Lake/Virgo_indigo/Fog_Lake_-_virgo_indigo_-_10_pretty_lights/"
++  },
++  {
++    "title": "push",
++    "artist": "Fog Lake",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/Fog_Lake/Dragonchaser/Fog_Lake_-_dragonchaser_-_11_push/"
++  },
++  {
++    "title": "Chasing Clouds",
++    "artist": "Franzi Kruth",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/franzi-kruth/love-is-art-vol-1-2/chasing-clouds-2/"
++  },
++  {
++    "title": "Everybody Knows You Came For Me",
++    "artist": "Franzi Kruth",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/franzi-kruth/love-is-art-vol-1-2/everybody-knows-you-came-for-me-2/"
++  },
++  {
++    "title": "Hair Longer Than My Skirt",
++    "artist": "Franzi Kruth",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/franzi-kruth/love-is-art-vol-1-2/hair-longer-than-my-skirt-2/"
++  },
++  {
++    "title": "I Hate Fireworks",
++    "artist": "Lopkerjo",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/john-lopker/sound-n-fury/i-hate-fireworks/"
++  },
++  {
++    "title": "Zealots and Zombies",
++    "artist": "Lopkerjo",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/john-lopker/zealots-and-zombies/zealots-and-zombies/"
++  },
++  {
++    "title": "Crypto Scam",
++    "artist": "NoKings XXX",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/nokings-xxx/myob-maga/crypto-scam/"
++  },
++  {
++    "title": "Merry Christmas",
++    "artist": "Shane Ivers",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/shane-ivers/single/merry-christmas-5/"
++  },
++  {
++    "title": "Arbeit oder Liebe",
++    "artist": "Torsten Torsten",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/torsten-torsten/arbeit-oder-liebe/arbeit-oder-liebe/"
++  },
++  {
++    "title": "The Annunakis",
++    "artist": "Wren West",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/carlos-javed-1/natures-sacred-symphony-continues/the-annunakis/"
++  },
++  {
++    "title": "The Falling Stars",
++    "artist": "Wren West",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/carlos-javed-1/natures-sacred-symphony-continues/the-falling-stars/"
++  },
++  {
++    "title": "The Natures Friend",
++    "artist": "Wren West",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/carlos-javed-1/natures-sacred-symphony-continues/the-natures-friend/"
++  },
++  {
++    "title": "The Universal Dream",
++    "artist": "Wren West",
++    "license": "CC BY 4.0",
++    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
++    "sourceUrl": "https://freemusicarchive.org/music/carlos-javed-1/natures-sacred-symphony-continues/the-universal-dream/"
++  }
++]
++
++const byKey = new Map(SONG_CREDITS.map((c) => [creditKey(c.title, c.artist), c]))
++
++function creditKey(title: string, artist: string): string {
++  const n = (s: string) => s.trim().replace(/\s+/g, " ")
++  return `${n(title)}::${n(artist)}`
++}
++
++export function findCredit(title: string, artist: string): SongCreditInfo | undefined {
++  return byKey.get(creditKey(title, artist))
++}
+
+--- a/lib/key-adjust-player.ts	2026-10-15 01:07:06.889582667 +0900
++++ b/lib/key-adjust-player.ts	1970-01-01 09:00:00.000000000 +0900
+@@ -1,102 +0,0 @@
+-"use client"
+-
+-import * as React from "react"
+-import { registerPreviewSource, stopOtherPreviews } from "./preview-bus"
+-
+-// 일반 미리듣기(audio-preview.ts)와 똑같은 싱글톤 <audio> 패턴.
+-//
+-// 피치시프트는 더 이상 브라우저(Tone.js/SoundTouch)에서 하지 않고, 서버
+-// (fitch-voice-server의 /voice/key-adjust)에서 Rubber Band(포먼트 보정 지원)로
+-// 미리 처리한 오디오를 그대로 재생한다. 그래서 여기는 audio-preview.ts와
+-// 거의 동일하게 단순하고, src만 "처리된 파일의 URL"이라는 점만 다르다.
+-
+-export const VOICE_API_BASE = process.env.NEXT_PUBLIC_VOICE_API_URL || "http://localhost:5000"
+-
+-// previewUrl(원본 30초 미리듣기)과 조정할 반음 수를 서버가 처리해주는 엔드포인트 URL
+-export function buildKeyAdjustUrl(previewUrl: string, semitones: number): string {
+-    const params = new URLSearchParams({
+-        previewUrl,
+-        semitones: String(semitones),
+-    })
+-    return `${VOICE_API_BASE}/voice/key-adjust?${params.toString()}`
+-}
+-
+-let sharedAudio: HTMLAudioElement | null = null
+-let currentId: string | null = null
+-const listeners = new Set<(id: string | null) => void>()
+-
+-type PlaybackState = "idle" | "loading" | "playing" | "error"
+-let currentState: PlaybackState = "idle"
+-const stateListeners = new Set<(s: PlaybackState) => void>()
+-
+-function getAudio() {
+-    if (!sharedAudio) {
+-        sharedAudio = new Audio()
+-        sharedAudio.addEventListener("ended", () => {
+-            setCurrentId(null)
+-            setState("idle")
+-        })
+-        sharedAudio.addEventListener("waiting", () => setState("loading"))
+-        sharedAudio.addEventListener("playing", () => setState("playing"))
+-        sharedAudio.addEventListener("error", () => setState("error"))
+-    }
+-    return sharedAudio
+-}
+-
+-function setCurrentId(id: string | null) {
+-    currentId = id
+-    listeners.forEach((l) => l(id))
+-}
+-
+-function setState(s: PlaybackState) {
+-    currentState = s
+-    stateListeners.forEach((l) => l(s))
+-}
+-
+-function stopKeyAdjustPreview() {
+-    sharedAudio?.pause()
+-    setCurrentId(null)
+-    setState("idle")
+-}
+-
+-// 일반 미리듣기가 재생을 시작할 때 이쪽을 멈출 수 있도록 등록
+-registerPreviewSource("keyadjust", stopKeyAdjustPreview)
+-
+-export function useKeyAdjustPreviewPlayer() {
+-    const [playingId, setPlayingId] = React.useState<string | null>(currentId)
+-    const [state, setLocalState] = React.useState<PlaybackState>(currentState)
+-
+-    React.useEffect(() => {
+-        listeners.add(setPlayingId)
+-        stateListeners.add(setLocalState)
+-        return () => {
+-            listeners.delete(setPlayingId)
+-            stateListeners.delete(setLocalState)
+-        }
+-    }, [])
+-
+-    // previewUrl: fetchArtwork(title, artist)로 받아온 원본 30초 미리듣기 mp3
+-    // semitones: computeKeySemitoneShift(entry, profile.range) 결과값
+-    const toggle = React.useCallback((id: string, previewUrl: string, semitones: number) => {
+-        const audio = getAudio()
+-        if (currentId === id) {
+-            audio.pause()
+-            setCurrentId(null)
+-            setState("idle")
+-            return
+-        }
+-
+-        stopOtherPreviews("keyadjust") // 일반 미리듣기 재생 중이었다면 먼저 정지
+-
+-        setState("loading")
+-        audio.src = buildKeyAdjustUrl(previewUrl, semitones)
+-        audio.currentTime = 0
+-        audio
+-            .play()
+-            .then(() => setState("playing"))
+-            .catch(() => setState("error"))
+-        setCurrentId(id)
+-    }, [])
+-
+-    return { playingId, state, toggle }
+-}
+\ No newline at end of file
+
+--- a/lib/songs.ts	2026-10-15 01:07:06.889806892 +0900
++++ b/lib/songs.ts	2026-10-15 01:08:47.673578239 +0900
+@@ -20,308 +20,8 @@
+   kyNumber?: string
+ }
+ 
+-export const SONGS: Song[] = [
+-  {
+-    id: "iu-good-day",
+-    title: "좋은 날",
+-    artist: "아이유 (IU)",
+-    highestNote: "Bb5",
+-    lowestNote: "F3",
+-    difficulty: 5,
+-    cover: "/covers/iu-good-day.svg",
+-    genre: "kpop",
+-    releaseYear: 2010,
+-    duration: "3:50",
+-    popularity: 98,
+-    tjNumber: "60384",
+-    kyNumber: "44366",
+-  },
+-  {
+-    id: "iu-night-letter",
+-    title: "밤편지",
+-    artist: "아이유 (IU)",
+-    highestNote: "E5",
+-    lowestNote: "F3",
+-    difficulty: 3,
+-    cover: "/covers/iu-night-letter.svg",
+-    genre: "ballad",
+-    releaseYear: 2017,
+-    duration: "4:14",
+-    popularity: 95,
+-    tjNumber: "28190",
+-    kyNumber: "50121",
+-  },
+-  {
+-    id: "park-hyo-shin-wildflower",
+-    title: "야생화",
+-    artist: "박효신",
+-    highestNote: "A5",
+-    lowestNote: "G3",
+-    difficulty: 5,
+-    cover: "/covers/park-hyo-shin-wildflower.svg",
+-    genre: "ballad",
+-    releaseYear: 2014,
+-    duration: "5:30",
+-    popularity: 92,
+-    tjNumber: "75712",
+-    kyNumber: "47861",
+-  },
+-  {
+-    id: "park-hyo-shin-snow-flower",
+-    title: "눈의 꽃",
+-    artist: "박효신",
+-    highestNote: "G#4",
+-    lowestNote: "D3",
+-    difficulty: 3,
+-    cover: "/covers/park-hyo-shin-snow-flower.svg",
+-    genre: "ballad",
+-    releaseYear: 2004,
+-    duration: "4:35",
+-    popularity: 90,
+-    tjNumber: "8174",
+-    kyNumber: "8553",
+-  },
+-  {
+-    id: "paul-kim-every-day",
+-    title: "모든 날, 모든 순간",
+-    artist: "폴킴",
+-    highestNote: "F#5",
+-    lowestNote: "F#3",
+-    difficulty: 4,
+-    cover: "/covers/paul-kim-every-day.svg",
+-    genre: "ballad",
+-    releaseYear: 2018,
+-    duration: "4:08",
+-    popularity: 94,
+-    tjNumber: "28890",
+-    kyNumber: "50893",
+-  },
+-  {
+-    id: "younha-event-horizon",
+-    title: "사건의 지평선",
+-    artist: "윤하",
+-    highestNote: "F#5",
+-    lowestNote: "G3",
+-    difficulty: 4,
+-    cover: "/covers/younha-event-horizon.svg",
+-    genre: "pop",
+-    releaseYear: 2022,
+-    duration: "4:21",
+-    popularity: 97,
+-    tjNumber: "68192",
+-    kyNumber: "27185",
+-  },
+-  {
+-    id: "kim-bum-soo-i-miss-you",
+-    title: "보고 싶다",
+-    artist: "김범수",
+-    highestNote: "A4",
+-    lowestNote: "C3",
+-    difficulty: 3,
+-    cover: "/covers/kim-bum-soo-i-miss-you.svg",
+-    genre: "ballad",
+-    releaseYear: 2002,
+-    duration: "4:32",
+-    popularity: 88,
+-    tjNumber: "10212",
+-    kyNumber: "8425",
+-  },
+-  {
+-    id: "lim-jae-bum-for-you",
+-    title: "너를 위해",
+-    artist: "임재범",
+-    highestNote: "A4",
+-    lowestNote: "C3",
+-    difficulty: 4,
+-    cover: "/covers/lim-jae-bum-for-you.svg",
+-    genre: "rock",
+-    releaseYear: 2000,
+-    duration: "5:01",
+-    popularity: 84,
+-    tjNumber: "5478",
+-    kyNumber: "8754",
+-  },
+-  {
+-    id: "sung-si-kyung-on-the-street",
+-    title: "거리에서",
+-    artist: "성시경",
+-    highestNote: "F#4",
+-    lowestNote: "C3",
+-    difficulty: 2,
+-    cover: "/covers/sung-si-kyung-on-the-street.svg",
+-    genre: "ballad",
+-    releaseYear: 2004,
+-    duration: "4:33",
+-    popularity: 80,
+-    tjNumber: "8290",
+-    kyNumber: "9237",
+-  },
+-  {
+-    id: "lee-sun-hee-fate",
+-    title: "인연",
+-    artist: "이선희",
+-    highestNote: "C5",
+-    lowestNote: "E3",
+-    difficulty: 4,
+-    cover: "/covers/lee-sun-hee-fate.svg",
+-    genre: "ballad",
+-    releaseYear: 2005,
+-    duration: "4:20",
+-    popularity: 78,
+-    tjNumber: "60036",
+-    kyNumber: "9015",
+-  },
+-  {
+-    id: "kim-yeon-woo-farewell-taxi",
+-    title: "이별택시",
+-    artist: "김연우",
+-    highestNote: "G#4",
+-    lowestNote: "C3",
+-    difficulty: 3,
+-    cover: "/covers/kim-yeon-woo-farewell-taxi.svg",
+-    genre: "ballad",
+-    releaseYear: 2008,
+-    duration: "4:13",
+-    popularity: 75,
+-    tjNumber: "16108",
+-    kyNumber: "77543",
+-  },
+-  {
+-    id: "kim-kwang-seok-around-thirty",
+-    title: "서른 즈음에",
+-    artist: "김광석",
+-    highestNote: "E4",
+-    lowestNote: "B2",
+-    difficulty: 2,
+-    cover: "/covers/kim-kwang-seok-around-thirty.svg",
+-    genre: "folk",
+-    releaseYear: 1994,
+-    duration: "4:18",
+-    popularity: 73,
+-    tjNumber: "1408",
+-    kyNumber: "7619",
+-  },
+-  {
+-    id: "bts-dynamite",
+-    title: "Dynamite",
+-    artist: "BTS",
+-    highestNote: "C#5",
+-    lowestNote: "G3",
+-    difficulty: 3,
+-    cover: "/covers/bts-dynamite.svg",
+-    genre: "kpop",
+-    releaseYear: 2020,
+-    duration: "3:19",
+-    popularity: 99,
+-    tjNumber: "68103",
+-    kyNumber: "23021",
+-  },
+-  {
+-    id: "newjeans-hype-boy",
+-    title: "Hype Boy",
+-    artist: "NewJeans",
+-    highestNote: "A4",
+-    lowestNote: "G3",
+-    difficulty: 2,
+-    cover: "/covers/newjeans-hype-boy.svg",
+-    genre: "kpop",
+-    releaseYear: 2022,
+-    duration: "2:59",
+-    popularity: 96,
+-    tjNumber: "68567",
+-    kyNumber: "29013",
+-  },
+-  {
+-    id: "ive-love-dive",
+-    title: "LOVE DIVE",
+-    artist: "IVE",
+-    highestNote: "E5",
+-    lowestNote: "F#3",
+-    difficulty: 3,
+-    cover: "/covers/ive-love-dive.svg",
+-    genre: "kpop",
+-    releaseYear: 2022,
+-    duration: "2:57",
+-    popularity: 93,
+-    tjNumber: "68421",
+-    kyNumber: "28919",
+-  },
+-  {
+-    id: "aespa-next-level",
+-    title: "Next Level",
+-    artist: "aespa",
+-    highestNote: "E5",
+-    lowestNote: "F#3",
+-    difficulty: 4,
+-    cover: "/covers/aespa-next-level.svg",
+-    genre: "kpop",
+-    releaseYear: 2021,
+-    duration: "3:39",
+-    popularity: 91,
+-    tjNumber: "68321",
+-    kyNumber: "27812",
+-  },
+-  {
+-    id: "10cm-tonight-stars-fall",
+-    title: "오늘 밤은 어둠이 무서워요",
+-    artist: "10CM",
+-    highestNote: "E4",
+-    lowestNote: "A2",
+-    difficulty: 2,
+-    cover: "/covers/10cm-tonight.svg",
+-    genre: "indie",
+-    releaseYear: 2019,
+-    duration: "3:38",
+-    popularity: 70,
+-    tjNumber: "30214",
+-    kyNumber: "61723",
+-  },
+-  {
+-    id: "akmu-how-can-i-love-the-heartbreak",
+-    title: "어떻게 이별까지 사랑하겠어",
+-    artist: "AKMU",
+-    highestNote: "F5",
+-    lowestNote: "E3",
+-    difficulty: 4,
+-    cover: "/covers/akmu-heartbreak.svg",
+-    genre: "ballad",
+-    releaseYear: 2019,
+-    duration: "4:18",
+-    popularity: 89,
+-    tjNumber: "30210",
+-    kyNumber: "61715",
+-  },
+-  {
+-    id: "bruno-mars-just-the-way",
+-    title: "Just The Way You Are",
+-    artist: "Bruno Mars",
+-    highestNote: "F#5",
+-    lowestNote: "F3",
+-    difficulty: 4,
+-    cover: "/covers/bruno-mars-just-the-way.svg",
+-    genre: "pop",
+-    releaseYear: 2010,
+-    duration: "3:40",
+-    popularity: 86,
+-    tjNumber: "61824",
+-    kyNumber: "44213",
+-  },
+-  {
+-    id: "adele-hello",
+-    title: "Hello",
+-    artist: "Adele",
+-    highestNote: "F5",
+-    lowestNote: "F3",
+-    difficulty: 4,
+-    cover: "/covers/adele-hello.svg",
+-    genre: "pop",
+-    releaseYear: 2015,
+-    duration: "4:55",
+-    popularity: 85,
+-    tjNumber: "63102",
+-    kyNumber: "48910",
+-  },
+-]
++// 전시회 버전: 실제 곡 샘플 데이터는 제거했다. (원복 시 git으로 되돌릴 것)
++export const SONGS: Song[] = []
+ 
+ // Map midi numbers for note comparison
+ export const NOTE_TO_MIDI: Record<string, number> = {
+
+--- a/public/covers/10cm-tonight.svg	2026-10-15 01:07:06.891184138 +0900
++++ b/public/covers/10cm-tonight.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,20 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1E1E2E"/>
+-      <stop offset="100%" stop-color="#404060"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#404060"/>
+-      <stop offset="100%" stop-color="#FFCC66"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="64.4158304192374" cy="136.71819802858516" r="7.008994092652936" fill="#FFCC66" opacity="0.3922742575811554"/><circle cx="324.8594753714429" cy="197.43984044398255" r="8.732591749957859" fill="#FFCC66" opacity="0.9237013303634829"/><circle cx="148.04370614003105" cy="271.30141687053754" r="8.039076771868512" fill="#FFCC66" opacity="0.9384130080685953"/><circle cx="73.50024640989128" cy="265.9015380525685" r="12.428122658981748" fill="#FFCC66" opacity="0.4843239460916511"/><circle cx="397.1479313089451" cy="244.9649873212094" r="6.318823056991051" fill="#FFCC66" opacity="0.6293194432937315"/><circle cx="213.5195234998268" cy="198.77898991058328" r="15.843902313097793" fill="#FFCC66" opacity="0.36471291819182244"/><circle cx="274.46651682468246" cy="80.93226175528403" r="13.792406882827162" fill="#FFCC66" opacity="0.9488045417959483"/><circle cx="120.55936717948157" cy="311.387844225845" r="10.807978643854414" fill="#FFCC66" opacity="0.7111087106563563"/><circle cx="189.73840342160946" cy="393.6344662411694" r="8.095072390137375" fill="#FFCC66" opacity="0.7360488036629808"/><circle cx="19.186482846748998" cy="189.98050292252526" r="17.659738874312314" fill="#FFCC66" opacity="0.9126362096872276"/><circle cx="254.8512738452027" cy="347.7422054101259" r="15.666562703776805" fill="#FFCC66" opacity="0.3539347701568084"/><circle cx="275.54941533698235" cy="294.4985448568083" r="12.774695223480187" fill="#FFCC66" opacity="0.8348024619923629"/><circle cx="117.3836207632605" cy="236.96780784309678" r="13.73052459654843" fill="#FFCC66" opacity="0.5515926473125382"/><circle cx="55.44066170873361" cy="359.05831357637766" r="19.700352345943777" fill="#FFCC66" opacity="0.5704628400224501"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">오늘 밤은 어둠이...</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">10CM</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/adele-hello.svg	2026-10-15 01:07:06.891282397 +0900
++++ b/public/covers/adele-hello.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1B1B1B"/>
+-      <stop offset="100%" stop-color="#5B5B5B"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#5B5B5B"/>
+-      <stop offset="100%" stop-color="#D4AF37"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <rect x="60" y="60" width="280" height="280" fill="#5B5B5B"/>
+-        <rect x="80" y="80" width="240" height="240" stroke="#D4AF37" stroke-width="2" fill="none"/>
+-        <text x="200" y="220" text-anchor="middle" font-family="serif" font-style="italic" font-size="48" fill="#D4AF37">H</text>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Hello</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">Adele</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/aespa-next-level.svg	2026-10-15 01:07:06.891332516 +0900
++++ b/public/covers/aespa-next-level.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#000020"/>
+-      <stop offset="100%" stop-color="#00E5FF"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#00E5FF"/>
+-      <stop offset="100%" stop-color="#FF00C8"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <rect x="60" y="60" width="280" height="280" rx="20" stroke="#00E5FF" stroke-width="3" fill="none"/>
+-        <rect x="100" y="100" width="200" height="200" rx="14" stroke="#FF00C8" stroke-width="3" fill="none"/>
+-        <text x="200" y="220" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="56" fill="#FF00C8">∞</text>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Next Level</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">aespa</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/akmu-heartbreak.svg	2026-10-15 01:07:06.891382636 +0900
++++ b/public/covers/akmu-heartbreak.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#F5E6D3"/>
+-      <stop offset="100%" stop-color="#D9B996"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#D9B996"/>
+-      <stop offset="100%" stop-color="#8B5E3C"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="200" cy="240" r="160" fill="#8B5E3C" opacity="0.85"/>
+-        <circle cx="200" cy="240" r="100" fill="#D9B996" opacity="0.85"/>
+-        <line x1="200" y1="240" x2="400" y2="240" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="300" y2="413.2050807568877" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="100.00000000000004" y2="413.20508075688775" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="0" y2="240.00000000000003" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="99.99999999999991" y2="66.7949192431123" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/><line x1="200" y1="240" x2="300" y2="66.79491924311228" stroke="#8B5E3C" stroke-width="2" opacity="0.4"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">어떻게 이별까지...</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">AKMU</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/bruno-mars-just-the-way.svg	2026-10-15 01:07:06.891440676 +0900
++++ b/public/covers/bruno-mars-just-the-way.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,21 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1A1A2E"/>
+-      <stop offset="100%" stop-color="#E94560"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#E94560"/>
+-      <stop offset="100%" stop-color="#F2C94C"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <rect x="60" y="80" width="280" height="40" fill="#F2C94C" opacity="0.9"/><rect x="60" y="140" width="280" height="40" fill="#E94560" opacity="0.75"/><rect x="60" y="200" width="280" height="40" fill="#F2C94C" opacity="0.6000000000000001"/><rect x="60" y="260" width="280" height="40" fill="#E94560" opacity="0.45000000000000007"/>
+-        <circle cx="200" cy="200" r="40" fill="#F2C94C"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Just The Way</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">Bruno Mars</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/bts-dynamite.svg	2026-10-15 01:07:06.891517558 +0900
++++ b/public/covers/bts-dynamite.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,21 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FFE066"/>
+-      <stop offset="100%" stop-color="#FF8FA3"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FF8FA3"/>
+-      <stop offset="100%" stop-color="#9D8CFF"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="300" cy="200" r="46.50822554896014" fill="#9D8CFF" opacity="0.85"/><circle cx="292.3879532511287" cy="238.26834323650897" r="35.44810920516723" fill="#FF8FA3" opacity="0.85"/><circle cx="270.71067811865476" cy="270.71067811865476" r="43.88919866855095" fill="#FF8FA3" opacity="0.85"/><circle cx="238.268343236509" cy="292.3879532511287" r="39.543253316781275" fill="#9D8CFF" opacity="0.85"/><circle cx="200" cy="300" r="33.26556177939089" fill="#FF8FA3" opacity="0.85"/><circle cx="161.73165676349103" cy="292.3879532511287" r="46.475797901223096" fill="#FF8FA3" opacity="0.85"/><circle cx="129.28932188134524" cy="270.71067811865476" r="32.01191398255739" fill="#9D8CFF" opacity="0.85"/><circle cx="107.61204674887132" cy="238.268343236509" r="31.899721207524145" fill="#FF8FA3" opacity="0.85"/><circle cx="100" cy="200" r="47.03106843338064" fill="#FF8FA3" opacity="0.85"/><circle cx="107.61204674887132" cy="161.73165676349103" r="47.214489262204154" fill="#9D8CFF" opacity="0.85"/><circle cx="129.28932188134524" cy="129.28932188134524" r="43.49234023206552" fill="#FF8FA3" opacity="0.85"/><circle cx="161.73165676349097" cy="107.61204674887135" r="35.336704744428765" fill="#FF8FA3" opacity="0.85"/><circle cx="199.99999999999997" cy="100" r="38.95146036901485" fill="#9D8CFF" opacity="0.85"/><circle cx="238.268343236509" cy="107.61204674887134" r="39.82810090382695" fill="#FF8FA3" opacity="0.85"/><circle cx="270.71067811865476" cy="129.28932188134524" r="47.17824657190131" fill="#FF8FA3" opacity="0.85"/><circle cx="292.38795325112864" cy="161.73165676349095" r="31.476542249259218" fill="#9D8CFF" opacity="0.85"/>
+-        <circle cx="200" cy="200" r="60" fill="#FFE066"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Dynamite</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">BTS</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/iu-good-day.svg	2026-10-15 01:07:06.891578748 +0900
++++ b/public/covers/iu-good-day.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FFB347"/>
+-      <stop offset="100%" stop-color="#FF6B9D"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FF6B9D"/>
+-      <stop offset="100%" stop-color="#7B5BFF"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="200" cy="200" r="140" fill="url(#g1)" />
+-        <line x1="200" y1="200" x2="360" y2="200" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="344.1550188643871" y2="269.4213982588093" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="299.7583682973974" y2="325.0930371948848" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="235.6033494330103" y2="355.9884659490918" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="164.3966505669897" y2="355.9884659490918" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="100.24163170260265" y2="325.0930371948848" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="55.844981135612954" y2="269.4213982588093" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="40" y2="200.00000000000003" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="55.844981135612926" y2="130.5786017411907" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="100.2416317026026" y2="74.90696280511526" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="164.39665056698965" y2="44.01153405090821" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="235.6033494330103" y2="44.01153405090821" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="299.75836829739734" y2="74.90696280511521" stroke="#7B5BFF" stroke-width="3" opacity="0.5" /><line x1="200" y1="200" x2="344.15501886438705" y2="130.57860174119065" stroke="#7B5BFF" stroke-width="3" opacity="0.5" />
+-        <circle cx="200" cy="200" r="80" fill="#7B5BFF" opacity="0.8"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">좋은 날</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">IU</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/iu-night-letter.svg	2026-10-15 01:07:06.891630485 +0900
++++ b/public/covers/iu-night-letter.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1B2D6B"/>
+-      <stop offset="100%" stop-color="#3E5FB0"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#3E5FB0"/>
+-      <stop offset="100%" stop-color="#8FA8E8"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="280" cy="130" r="70" fill="#8FA8E8" opacity="0.95" />
+-        <circle cx="260" cy="120" r="60" fill="#1B2D6B" />
+-        <circle cx="371.0721845887319" cy="118.16389831903558" r="0.49800469779463047" fill="#8FA8E8" opacity="0.8804430678150104" /><circle cx="90.6035783781189" cy="319.2693792435891" r="1.4267983693893769" fill="#8FA8E8" opacity="0.22913055616943448" /><circle cx="297.7829202138935" cy="8.749852026381566" r="0.5188512000706651" fill="#8FA8E8" opacity="0.7789040185504916" /><circle cx="340.17936099599694" cy="336.4166602082055" r="1.663111478059921" fill="#8FA8E8" opacity="0.5464510266449327" /><circle cx="375.8522732107697" cy="285.1239279233512" r="0.6214444109539765" fill="#8FA8E8" opacity="0.8059099440503725" /><circle cx="91.82023070430412" cy="45.122094411110766" r="1.1211151356811835" fill="#8FA8E8" opacity="0.5437635417133557" /><circle cx="178.85368174545562" cy="327.56775875078966" r="0.3739992294326962" fill="#8FA8E8" opacity="0.9746449630345755" /><circle cx="354.9150989207608" cy="75.74096410447866" r="0.6970839795163488" fill="#8FA8E8" opacity="0.5871904404297692" /><circle cx="15.220651332962687" cy="260.22457272078145" r="0.7693529600106833" fill="#8FA8E8" opacity="0.8844547441572406" /><circle cx="331.51342258184576" cy="20.744038078610316" r="1.122344243438799" fill="#8FA8E8" opacity="0.5475166254367643" /><circle cx="280.4387718607713" cy="82.38591718685666" r="1.1659667512726448" fill="#8FA8E8" opacity="0.6555712903740871" /><circle cx="207.10127475446262" cy="146.93113775731334" r="1.391271468020587" fill="#8FA8E8" opacity="0.38178814579035736" /><circle cx="331.255213185022" cy="276.40354014678377" r="1.4640947402585665" fill="#8FA8E8" opacity="0.5944720299725019" /><circle cx="264.95800335383456" cy="329.3074141084155" r="1.5064414704500966" fill="#8FA8E8" opacity="0.7184015016144127" /><circle cx="236.52439106179997" cy="154.62848254617626" r="1.1170769504922728" fill="#8FA8E8" opacity="0.3518377159053276" /><circle cx="139.92719099178274" cy="95.81634184112393" r="0.5086086771014398" fill="#8FA8E8" opacity="0.2108163944428693" /><circle cx="136.17501137750634" cy="186.81953923141032" r="0.4589783250300839" fill="#8FA8E8" opacity="0.3030849741041712" /><circle cx="264.69328752292023" cy="1.1286037299563567" r="1.023212389296181" fill="#8FA8E8" opacity="0.35797846665508254" /><circle cx="44.24564050362214" cy="211.9036989773747" r="0.4138612986294856" fill="#8FA8E8" opacity="0.31619412372559375" /><circle cx="51.1169476370283" cy="202.18055341164956" r="0.6135787688690296" fill="#8FA8E8" opacity="0.48461064694294864" /><circle cx="207.00249279344825" cy="226.75024540415336" r="1.209456531278722" fill="#8FA8E8" opacity="0.8572370381922099" /><circle cx="194.65600064890012" cy="230.80159378183924" r="0.87312719077914" fill="#8FA8E8" opacity="0.6565040947671977" /><circle cx="234.5524977615776" cy="83.61478774655859" r="0.5331909865527817" fill="#8FA8E8" opacity="0.8443833218841974" /><circle cx="207.72473459241678" cy="107.93266591056816" r="0.5159176281889606" fill="#8FA8E8" opacity="0.5686046675750565" /><circle cx="70.14415222933951" cy="200.30988922998142" r="0.45361309904678415" fill="#8FA8E8" opacity="0.6794457448323548" /><circle cx="30.351141135718507" cy="162.48249672202624" r="1.0011736057914817" fill="#8FA8E8" opacity="0.8841160575820963" /><circle cx="167.37808107798324" cy="32.55289292492218" r="1.583759709089627" fill="#8FA8E8" opacity="0.7393371952170189" /><circle cx="248.62679998762385" cy="282.24904670657327" r="1.6679261972096413" fill="#8FA8E8" opacity="0.3613911086507103" /><circle cx="350.54865973741664" cy="278.35719023910224" r="0.9064390910337117" fill="#8FA8E8" opacity="0.8897335089497691" /><circle cx="100.16150396798582" cy="188.10686558694672" r="0.8974655208811297" fill="#8FA8E8" opacity="0.3611398868326318" />
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">밤편지</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">IU</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/ive-love-dive.svg	2026-10-15 01:07:06.891680333 +0900
++++ b/public/covers/ive-love-dive.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,20 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#2B1B5C"/>
+-      <stop offset="100%" stop-color="#7B5BFF"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#7B5BFF"/>
+-      <stop offset="100%" stop-color="#FFD1FF"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <path d="M0 80 Q100 50 200 80 T400 80" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.9"/><path d="M0 130 Q100 100 200 130 T400 130" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.8"/><path d="M0 180 Q100 150 200 180 T400 180" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.7"/><path d="M0 230 Q100 200 200 230 T400 230" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.6"/><path d="M0 280 Q100 250 200 280 T400 280" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.5"/><path d="M0 330 Q100 300 200 330 T400 330" stroke="#FFD1FF" stroke-width="3" fill="none" opacity="0.4"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">LOVE DIVE</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">IVE</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/kim-bum-soo-i-miss-you.svg	2026-10-15 01:07:06.891736391 +0900
++++ b/public/covers/kim-bum-soo-i-miss-you.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,20 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#0A0A1A"/>
+-      <stop offset="100%" stop-color="#1F1F4D"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1F1F4D"/>
+-      <stop offset="100%" stop-color="#B96BFF"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <line x1="317.3593985599521" y1="31.198171875932033" x2="313.3593985599521" y2="52.41695653172242" stroke="#B96BFF" stroke-width="1.5" opacity="0.6687588907169022" /><line x1="181.68730756440846" y1="390.8821122151424" x2="177.68730756440846" y2="407.46329307919314" stroke="#B96BFF" stroke-width="1.5" opacity="0.5619721215496079" /><line x1="113.10209014977342" y1="329.738272101108" x2="109.10209014977342" y2="338.61803040871956" stroke="#B96BFF" stroke-width="1.5" opacity="0.9542145034640921" /><line x1="242.1111754382224" y1="270.96008525128263" x2="238.1111754382224" y2="287.5609088773656" stroke="#B96BFF" stroke-width="1.5" opacity="0.5298822905057174" /><line x1="279.7894624280611" y1="237.68522722867664" x2="275.7894624280611" y2="248.99746687512524" stroke="#B96BFF" stroke-width="1.5" opacity="0.7646742196503657" /><line x1="164.01188782839907" y1="256.2112992617521" x2="160.01188782839907" y2="267.79510543636263" stroke="#B96BFF" stroke-width="1.5" opacity="0.7345887510944769" /><line x1="278.2860021355844" y1="367.15854519154607" x2="274.2860021355844" y2="388.6648616222039" stroke="#B96BFF" stroke-width="1.5" opacity="0.8061328018021241" /><line x1="342.1258740050733" y1="195.70513342922484" x2="338.1258740050733" y2="208.24468766078888" stroke="#B96BFF" stroke-width="1.5" opacity="0.9137333359089399" /><line x1="269.8951312185682" y1="273.2315961435579" x2="265.8951312185682" y2="293.36528197285946" stroke="#B96BFF" stroke-width="1.5" opacity="0.7950430373541932" /><line x1="333.86709736962115" y1="69.9513577648589" x2="329.86709736962115" y2="79.67051929703227" stroke="#B96BFF" stroke-width="1.5" opacity="0.8518750200968463" /><line x1="150.32127245897306" y1="31.286036576094123" x2="146.32127245897306" y2="52.5039235552339" stroke="#B96BFF" stroke-width="1.5" opacity="0.9174301884572342" /><line x1="136.45931592078827" y1="344.39112747912486" x2="132.45931592078827" y2="363.00532666253906" stroke="#B96BFF" stroke-width="1.5" opacity="0.8121010635343502" /><line x1="333.93514885995603" y1="48.60670303768791" x2="329.93514885995603" y2="63.889126758644494" stroke="#B96BFF" stroke-width="1.5" opacity="0.9221320133999524" /><line x1="351.7102997932084" y1="269.7900142925102" x2="347.7102997932084" y2="284.26292381857985" stroke="#B96BFF" stroke-width="1.5" opacity="0.9290389968317998" /><line x1="38.32890858946607" y1="6.887101175191956" x2="34.32890858946607" y2="20.293800195097234" stroke="#B96BFF" stroke-width="1.5" opacity="0.32693173132542136" /><line x1="166.6999380865367" y1="304.6975434589688" x2="162.6999380865367" y2="319.750039843068" stroke="#B96BFF" stroke-width="1.5" opacity="0.31797749199448777" /><line x1="167.57631255014758" y1="63.331473831672945" x2="163.57631255014758" y2="70.91961499637694" stroke="#B96BFF" stroke-width="1.5" opacity="0.71702144899049" /><line x1="246.8267016257785" y1="319.35204436889074" x2="242.8267016257785" y2="341.2030531121465" stroke="#B96BFF" stroke-width="1.5" opacity="0.9492415670287213" /><line x1="170.60716110439768" y1="152.65197193775947" x2="166.60716110439768" y2="171.64679963445857" stroke="#B96BFF" stroke-width="1.5" opacity="0.7149549455127333" /><line x1="302.196292821054" y1="155.16501477142333" x2="298.196292821054" y2="165.389322559944" stroke="#B96BFF" stroke-width="1.5" opacity="0.932433682168575" /><line x1="319.6000770374007" y1="317.45986359743284" x2="315.6000770374007" y2="328.1171956388415" stroke="#B96BFF" stroke-width="1.5" opacity="0.7210628827262096" /><line x1="162.9695287366936" y1="231.10920830615456" x2="158.9695287366936" y2="240.4252212747582" stroke="#B96BFF" stroke-width="1.5" opacity="0.45705171063354555" /><line x1="273.1168096264407" y1="34.020209755728146" x2="269.1168096264407" y2="47.413716381547516" stroke="#B96BFF" stroke-width="1.5" opacity="0.9507859691461367" /><line x1="88.65473884416662" y1="321.9840095705627" x2="84.65473884416662" y2="342.1671438004902" stroke="#B96BFF" stroke-width="1.5" opacity="0.791995207662546" /><line x1="259.82656316642283" y1="101.10556279627332" x2="255.82656316642283" y2="121.7860686391733" stroke="#B96BFF" stroke-width="1.5" opacity="0.9712965204784905" /><line x1="134.7829001265942" y1="188.25053492964918" x2="130.7829001265942" y2="198.97485514525573" stroke="#B96BFF" stroke-width="1.5" opacity="0.4117157667179844" /><line x1="283.41244872393924" y1="306.2600302921278" x2="279.41244872393924" y2="322.234715834285" stroke="#B96BFF" stroke-width="1.5" opacity="0.7203160918915734" /><line x1="7.1574693049667015" y1="398.54976575713243" x2="3.1574693049667015" y2="416.8137604490229" stroke="#B96BFF" stroke-width="1.5" opacity="0.4101476374883394" /><line x1="356.32920423343097" y1="177.79949857968327" x2="352.32920423343097" y2="198.67321964459126" stroke="#B96BFF" stroke-width="1.5" opacity="0.6483142878507869" /><line x1="130.8390023449189" y1="210.55787394243285" x2="126.8390023449189" y2="221.21942374835052" stroke="#B96BFF" stroke-width="1.5" opacity="0.8695227237778318" /><line x1="44.17269352771118" y1="124.69933103112166" x2="40.17269352771118" y2="135.31501382915243" stroke="#B96BFF" stroke-width="1.5" opacity="0.8291453535217637" /><line x1="100.17594252810854" y1="171.20689973963604" x2="96.17594252810854" y2="192.69265156443686" stroke="#B96BFF" stroke-width="1.5" opacity="0.5448107404029889" /><line x1="126.86772336025163" y1="376.1549934809402" x2="122.86772336025163" y2="387.6487029737085" stroke="#B96BFF" stroke-width="1.5" opacity="0.4493273137344457" /><line x1="142.25674764102232" y1="71.62524466405395" x2="138.25674764102232" y2="82.81551441620304" stroke="#B96BFF" stroke-width="1.5" opacity="0.6068195272411541" /><line x1="194.60169667550363" y1="368.18942559982924" x2="190.60169667550363" y2="383.8121642552256" stroke="#B96BFF" stroke-width="1.5" opacity="0.3446964444142561" /><line x1="263.46898697129717" y1="163.650646894895" x2="259.46898697129717" y2="179.76958606938098" stroke="#B96BFF" stroke-width="1.5" opacity="0.6636142387712229" /><line x1="88.22684835955327" y1="149.75394669053563" x2="84.22684835955327" y2="156.573586691751" stroke="#B96BFF" stroke-width="1.5" opacity="0.9106766566342515" /><line x1="198.25909969720647" y1="8.740551059474333" x2="194.25909969720647" y2="30.67617903784589" stroke="#B96BFF" stroke-width="1.5" opacity="0.5825077685220639" /><line x1="389.7752465432411" y1="137.32875767625293" x2="385.7752465432411" y2="151.50129867124997" stroke="#B96BFF" stroke-width="1.5" opacity="0.4006447388580683" /><line x1="112.78638506966958" y1="278.4580645783816" x2="108.78638506966958" y2="287.06366651241524" stroke="#B96BFF" stroke-width="1.5" opacity="0.46497137056553883" /><line x1="380.694527599132" y1="379.8730963723905" x2="376.694527599132" y2="394.1849583961696" stroke="#B96BFF" stroke-width="1.5" opacity="0.891142008396747" /><line x1="121.69967017720222" y1="99.0179379561221" x2="117.69967017720222" y2="110.72132457573511" stroke="#B96BFF" stroke-width="1.5" opacity="0.6303985093509638" /><line x1="50.77958179928066" y1="390.41221765105297" x2="46.77958179928066" y2="399.5444120192074" stroke="#B96BFF" stroke-width="1.5" opacity="0.6653159635354435" /><line x1="398.44991127522525" y1="125.3696997935866" x2="394.44991127522525" y2="135.44051570035225" stroke="#B96BFF" stroke-width="1.5" opacity="0.6216639370277115" /><line x1="274.71893342517" y1="354.0187941638311" x2="270.71893342517" y2="361.4427030795494" stroke="#B96BFF" stroke-width="1.5" opacity="0.9882710985632006" /><line x1="269.8652866845369" y1="228.32273340544796" x2="265.8652866845369" y2="243.93722897535275" stroke="#B96BFF" stroke-width="1.5" opacity="0.8415680364651332" /><line x1="184.4776231410928" y1="378.96801281436683" x2="180.4776231410928" y2="398.38054050975893" stroke="#B96BFF" stroke-width="1.5" opacity="0.4861645892351234" /><line x1="53.41709566084294" y1="149.1249668019258" x2="49.41709566084294" y2="166.12865142184222" stroke="#B96BFF" stroke-width="1.5" opacity="0.7660603390721026" /><line x1="293.3713260565391" y1="378.57837155051175" x2="289.3713260565391" y2="391.4748752957264" stroke="#B96BFF" stroke-width="1.5" opacity="0.4146397826248833" /><line x1="255.8153577236943" y1="11.315753573997878" x2="251.8153577236943" y2="25.84912678125383" stroke="#B96BFF" stroke-width="1.5" opacity="0.6602294603473825" /><line x1="373.0935048214695" y1="37.688324860192026" x2="369.0935048214695" y2="48.587189496637976" stroke="#B96BFF" stroke-width="1.5" opacity="0.8414394755613694" /><line x1="24.455477253783098" y1="53.58285530142655" x2="20.455477253783098" y2="70.89502837796681" stroke="#B96BFF" stroke-width="1.5" opacity="0.42811071924220423" /><line x1="345.34846677058744" y1="376.2565141677104" x2="341.34846677058744" y2="383.7145224168893" stroke="#B96BFF" stroke-width="1.5" opacity="0.6404668717521174" /><line x1="60.300984467153775" y1="338.47854187821343" x2="56.300984467153775" y2="345.8138002087427" stroke="#B96BFF" stroke-width="1.5" opacity="0.8646691333696475" /><line x1="305.09510498841973" y1="59.2944696908964" x2="301.09510498841973" y2="79.14534789363924" stroke="#B96BFF" stroke-width="1.5" opacity="0.9339300735891645" /><line x1="25.346144000471327" y1="313.89456969548604" x2="21.346144000471327" y2="328.1986742322936" stroke="#B96BFF" stroke-width="1.5" opacity="0.36015728076837666" /><line x1="13.158874718824087" y1="259.8623141909791" x2="9.158874718824087" y2="273.7255607802862" stroke="#B96BFF" stroke-width="1.5" opacity="0.6114678819136661" /><line x1="249.71149339682438" y1="59.521807753670956" x2="245.71149339682438" y2="73.99992139326687" stroke="#B96BFF" stroke-width="1.5" opacity="0.8212560159089521" /><line x1="278.6889335805255" y1="338.6180796269139" x2="274.6889335805255" y2="349.46702744618415" stroke="#B96BFF" stroke-width="1.5" opacity="0.7818680168951049" /><line x1="348.18826382671296" y1="58.003392060004" x2="344.18826382671296" y2="67.39290661020354" stroke="#B96BFF" stroke-width="1.5" opacity="0.780892994015232" /><line x1="180.1345308635573" y1="21.49142349873996" x2="176.1345308635573" y2="40.83571836744409" stroke="#B96BFF" stroke-width="1.5" opacity="0.6908016129680021" /><line x1="230.64798283502904" y1="269.1138597767143" x2="226.64798283502904" y2="284.14216041843605" stroke="#B96BFF" stroke-width="1.5" opacity="0.6464841703402662" /><line x1="113.90350575146017" y1="226.80042525009222" x2="109.90350575146017" y2="245.75903404566296" stroke="#B96BFF" stroke-width="1.5" opacity="0.7686583364190657" /><line x1="290.60167629452366" y1="348.88476390643365" x2="286.60167629452366" y2="361.02469466530465" stroke="#B96BFF" stroke-width="1.5" opacity="0.5388751197185657" /><line x1="361.4649210528593" y1="220.23884001679392" x2="357.4649210528593" y2="232.34290503317007" stroke="#B96BFF" stroke-width="1.5" opacity="0.7683698882603112" /><line x1="113.75110189910278" y1="33.902881704897545" x2="109.75110189910278" y2="53.888905628067036" stroke="#B96BFF" stroke-width="1.5" opacity="0.8369935200840926" /><line x1="239.12565758095064" y1="161.78942823552796" x2="235.12565758095064" y2="175.77743461632127" stroke="#B96BFF" stroke-width="1.5" opacity="0.5341598236740942" /><line x1="323.62579804804767" y1="78.31285756757826" x2="319.62579804804767" y2="85.13902741763901" stroke="#B96BFF" stroke-width="1.5" opacity="0.7970385408278867" /><line x1="292.5351149937303" y1="138.97339516533668" x2="288.5351149937303" y2="147.57247961981554" stroke="#B96BFF" stroke-width="1.5" opacity="0.41310108199442813" /><line x1="230.75058821645035" y1="304.98001461184066" x2="226.75058821645035" y2="323.87596992728936" stroke="#B96BFF" stroke-width="1.5" opacity="0.8188922742939204" /><line x1="118.88591042335794" y1="89.08213541228194" x2="114.88591042335794" y2="97.63080211166758" stroke="#B96BFF" stroke-width="1.5" opacity="0.3247780284643309" /><line x1="54.89239746902514" y1="62.3994852894759" x2="50.89239746902514" y2="68.71563024577974" stroke="#B96BFF" stroke-width="1.5" opacity="0.9369226041453109" /><line x1="212.63195983303143" y1="283.23935675344575" x2="208.63195983303143" y2="290.5957222619552" stroke="#B96BFF" stroke-width="1.5" opacity="0.7920809450094732" /><line x1="117.77920371753403" y1="21.15864550881468" x2="113.77920371753403" y2="31.675510394839055" stroke="#B96BFF" stroke-width="1.5" opacity="0.5420319175852075" /><line x1="345.44714946581445" y1="90.9234880739465" x2="341.44714946581445" y2="112.70208324825222" stroke="#B96BFF" stroke-width="1.5" opacity="0.9052393286400122" /><line x1="21.29975195042837" y1="200.12351589805544" x2="17.29975195042837" y2="208.2159473003299" stroke="#B96BFF" stroke-width="1.5" opacity="0.6883932506548714" /><line x1="231.81573062612105" y1="267.45198694812944" x2="227.81573062612105" y2="286.3508897300808" stroke="#B96BFF" stroke-width="1.5" opacity="0.47586985844019586" /><line x1="118.13191280992656" y1="349.37934061854776" x2="114.13191280992656" y2="366.85525488537843" stroke="#B96BFF" stroke-width="1.5" opacity="0.8894994525697548" /><line x1="159.30318944141106" y1="40.140470084153975" x2="155.30318944141106" y2="48.03756363442352" stroke="#B96BFF" stroke-width="1.5" opacity="0.7798421455604911" /><line x1="319.15538262437" y1="107.45569020209666" x2="315.15538262437" y2="120.17790563877453" stroke="#B96BFF" stroke-width="1.5" opacity="0.492961143188535" />
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">보고 싶다</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">김범수</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/kim-kwang-seok-around-thirty.svg	2026-10-15 01:07:06.891788790 +0900
++++ b/public/covers/kim-kwang-seok-around-thirty.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,25 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#2A1B0F"/>
+-      <stop offset="100%" stop-color="#7A5C3C"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#7A5C3C"/>
+-      <stop offset="100%" stop-color="#E8C795"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="200" cy="200" r="160" fill="#7A5C3C"/>
+-        <circle cx="200" cy="200" r="160" stroke="#E8C795" stroke-width="1" fill="none"/>
+-        <circle cx="200" cy="200" r="120" stroke="#E8C795" stroke-width="1" fill="none" opacity="0.5"/>
+-        <circle cx="200" cy="200" r="80" stroke="#E8C795" stroke-width="1" fill="none" opacity="0.5"/>
+-        <circle cx="200" cy="200" r="50" fill="#E8C795"/>
+-        <circle cx="200" cy="200" r="6" fill="#2A1B0F"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">서른 즈음에</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">김광석</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/kim-yeon-woo-farewell-taxi.svg	2026-10-15 01:07:06.891835296 +0900
++++ b/public/covers/kim-yeon-woo-farewell-taxi.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,24 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#101A33"/>
+-      <stop offset="100%" stop-color="#1F4F8C"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1F4F8C"/>
+-      <stop offset="100%" stop-color="#FFD166"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <rect x="80" y="220" width="240" height="80" rx="10" fill="#FFD166"/>
+-        <rect x="120" y="180" width="160" height="50" rx="6" fill="#1F4F8C"/>
+-        <circle cx="140" cy="300" r="20" fill="#101A33"/>
+-        <circle cx="260" cy="300" r="20" fill="#101A33"/>
+-        <rect x="170" y="160" width="60" height="20" rx="4" fill="#FFD166"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">이별택시</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">김연우</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/lee-sun-hee-fate.svg	2026-10-15 01:07:06.891882223 +0900
++++ b/public/covers/lee-sun-hee-fate.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,21 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#3B0F2E"/>
+-      <stop offset="100%" stop-color="#9B3D6F"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#9B3D6F"/>
+-      <stop offset="100%" stop-color="#F2C094"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="200" cy="200" r="30" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.9"/><circle cx="200" cy="200" r="48" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.8200000000000001"/><circle cx="200" cy="200" r="66" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.74"/><circle cx="200" cy="200" r="84" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.66"/><circle cx="200" cy="200" r="102" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.5800000000000001"/><circle cx="200" cy="200" r="120" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.5"/><circle cx="200" cy="200" r="138" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.42000000000000004"/><circle cx="200" cy="200" r="156" stroke="#F2C094" stroke-width="2" fill="none" opacity="0.33999999999999997"/>
+-        <circle cx="200" cy="200" r="20" fill="#9B3D6F"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">인연</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">이선희</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/lim-jae-bum-for-you.svg	2026-10-15 01:07:06.891932649 +0900
++++ b/public/covers/lim-jae-bum-for-you.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,20 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1A0A0A"/>
+-      <stop offset="100%" stop-color="#7A1F1F"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#7A1F1F"/>
+-      <stop offset="100%" stop-color="#F2C94C"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="186.18745141365835" cy="320" r="60" fill="#F2C94C" opacity="0.9" /><circle cx="195.35733974466032" cy="302" r="56" fill="#7A1F1F" opacity="0.8666666666666667" /><circle cx="231.79094762822072" cy="284" r="52" fill="#F2C94C" opacity="0.8333333333333333" /><circle cx="244.80020216723307" cy="266" r="48" fill="#7A1F1F" opacity="0.8" /><circle cx="170.01409609486063" cy="248" r="44" fill="#F2C94C" opacity="0.7666666666666666" /><circle cx="214.33618540159966" cy="230" r="40" fill="#7A1F1F" opacity="0.7333333333333334" /><circle cx="192.6843879181923" cy="212" r="36" fill="#F2C94C" opacity="0.7" /><circle cx="234.59407172504854" cy="194" r="32" fill="#7A1F1F" opacity="0.6666666666666666" /><circle cx="161.40797925149735" cy="176" r="28" fill="#F2C94C" opacity="0.6333333333333333" /><circle cx="213.3258033381192" cy="158" r="24" fill="#7A1F1F" opacity="0.6" /><circle cx="240.76439464770965" cy="140" r="20" fill="#F2C94C" opacity="0.5666666666666667" /><circle cx="204.3891438760225" cy="122" r="16" fill="#7A1F1F" opacity="0.5333333333333333" />
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">너를 위해</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">임재범</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/newjeans-hype-boy.svg	2026-10-15 01:07:06.892018936 +0900
++++ b/public/covers/newjeans-hype-boy.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#C9F0E0"/>
+-      <stop offset="100%" stop-color="#A8E6CF"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#A8E6CF"/>
+-      <stop offset="100%" stop-color="#FFE5B4"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="120" cy="140" r="80" fill="#A8E6CF" opacity="0.85"/>
+-        <circle cx="270" cy="170" r="100" fill="#FFE5B4" opacity="0.85"/>
+-        <circle cx="180" cy="290" r="90" fill="#C9F0E0" opacity="0.95"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">Hype Boy</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">NewJeans</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/park-hyo-shin-snow-flower.svg	2026-10-15 01:07:06.892094401 +0900
++++ b/public/covers/park-hyo-shin-snow-flower.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,23 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1A2A4A"/>
+-      <stop offset="100%" stop-color="#86A8E7"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#86A8E7"/>
+-      <stop offset="100%" stop-color="#FFFFFF"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="146.73466897663673" cy="377.93930165367544" r="3.047378465638274" fill="#FFFFFF" opacity="0.24726640270348482" /><circle cx="330.1062593270772" cy="175.42918550512664" r="1.912322112625904" fill="#FFFFFF" opacity="0.32632495190261357" /><circle cx="256.3584314494762" cy="260.3114118724547" r="2.179433901485306" fill="#FFFFFF" opacity="0.4623851277401787" /><circle cx="307.82642843804405" cy="386.6784754310723" r="2.9223680451596588" fill="#FFFFFF" opacity="0.5705494222689449" /><circle cx="19.39414521899039" cy="41.62523156936766" r="1.032951795995602" fill="#FFFFFF" opacity="0.8143662405223535" /><circle cx="155.7748575346985" cy="351.3681068628669" r="1.8316927965844467" fill="#FFFFFF" opacity="0.8827789586945713" /><circle cx="358.65928201595864" cy="252.23086450306184" r="2.033410945318347" fill="#FFFFFF" opacity="0.41306480452483085" /><circle cx="125.7183355295894" cy="326.6188989064242" r="1.5002786500680725" fill="#FFFFFF" opacity="0.24083075868374548" /><circle cx="168.22682393382414" cy="146.8215576006465" r="0.6050357502021341" fill="#FFFFFF" opacity="0.27920630438171695" /><circle cx="186.339683632795" cy="186.69019218220186" r="1.728077796674075" fill="#FFFFFF" opacity="0.41645883133873884" /><circle cx="25.76819620026294" cy="323.133879149081" r="2.784940639907577" fill="#FFFFFF" opacity="0.3320272587394436" /><circle cx="27.734230734801947" cy="223.45055127692336" r="3.4393421622489164" fill="#FFFFFF" opacity="0.7963702958169443" /><circle cx="14.812054763490057" cy="251.2033506129994" r="3.473186252690814" fill="#FFFFFF" opacity="0.7973408588514859" /><circle cx="52.72628724240689" cy="67.0289375810602" r="2.393241048100251" fill="#FFFFFF" opacity="0.9581453777667737" /><circle cx="48.99946680017288" cy="213.6686990913241" r="2.453275153377871" fill="#FFFFFF" opacity="0.24388772252982438" /><circle cx="117.24466750143763" cy="292.68031089053153" r="2.3940759850290885" fill="#FFFFFF" opacity="0.4288722350454842" /><circle cx="269.6919567938915" cy="46.85058451500237" r="2.614249832525568" fill="#FFFFFF" opacity="0.4877838095750744" /><circle cx="191.46287794315788" cy="190.1580034151923" r="1.1914045425681168" fill="#FFFFFF" opacity="0.6645366519376511" /><circle cx="334.2069183615956" cy="233.64489240997068" r="3.1803685345243284" fill="#FFFFFF" opacity="0.22979941096996317" /><circle cx="291.1178274781649" cy="371.2062057657963" r="0.962252416682343" fill="#FFFFFF" opacity="0.3747082699208412" /><circle cx="265.612112247607" cy="15.528897922162388" r="3.4227932748285976" fill="#FFFFFF" opacity="0.6156177954372937" /><circle cx="139.51760024984586" cy="270.50497246245453" r="1.1462259638669074" fill="#FFFFFF" opacity="0.8368501968449256" /><circle cx="398.4183315328761" cy="105.74033085321423" r="2.1700464018918852" fill="#FFFFFF" opacity="0.9634186004839667" /><circle cx="182.8695803419558" cy="355.1405612440251" r="0.9064432525944566" fill="#FFFFFF" opacity="0.9139080187653299" /><circle cx="6.187618739295386" cy="277.2196454791091" r="0.6327760430871735" fill="#FFFFFF" opacity="0.912828289772156" /><circle cx="29.317998430223202" cy="285.4902864312427" r="2.518826138492574" fill="#FFFFFF" opacity="0.7594936050400893" /><circle cx="337.22876470990667" cy="180.41329824836993" r="0.6504410474336302" fill="#FFFFFF" opacity="0.4402452659798586" /><circle cx="170.9411228660127" cy="373.3835129890777" r="0.6007325207378029" fill="#FFFFFF" opacity="0.31052091315215313" /><circle cx="55.083991684447795" cy="254.299337205381" r="1.918176521338018" fill="#FFFFFF" opacity="0.7878947645030481" /><circle cx="399.8495688224692" cy="267.3488097012543" r="3.121900633799702" fill="#FFFFFF" opacity="0.824138421983615" /><circle cx="160.22913429104827" cy="353.19119751808216" r="3.40225581521644" fill="#FFFFFF" opacity="0.6938796563669916" /><circle cx="132.88956818775398" cy="322.2989568975576" r="1.6165924426266773" fill="#FFFFFF" opacity="0.5594608195277762" /><circle cx="338.44518453524756" cy="375.84277896066106" r="2.951027264654952" fill="#FFFFFF" opacity="0.8306898029515564" /><circle cx="254.5046676122101" cy="170.43690795855778" r="2.427997381592042" fill="#FFFFFF" opacity="0.9765284724250611" /><circle cx="7.494370885321633" cy="89.54597265671391" r="1.128247749194093" fill="#FFFFFF" opacity="0.9043555191597419" /><circle cx="300.7225074911265" cy="319.97742314971606" r="0.5187597458499237" fill="#FFFFFF" opacity="0.8347291969893116" /><circle cx="201.24236537321264" cy="19.925655254484866" r="3.40873603369858" fill="#FFFFFF" opacity="0.9957490005841931" /><circle cx="282.8241205922749" cy="373.33906391713685" r="3.2471716499583003" fill="#FFFFFF" opacity="0.835072308677103" /><circle cx="306.89553715941906" cy="167.70092919815914" r="2.3002014923452005" fill="#FFFFFF" opacity="0.3621651415465203" /><circle cx="116.56107323040348" cy="236.8946043550727" r="0.5990453364264794" fill="#FFFFFF" opacity="0.8045695657281342" /><circle cx="323.05655624079935" cy="333.931391314101" r="0.6039213216770931" fill="#FFFFFF" opacity="0.7493246505526359" /><circle cx="153.11035046712766" cy="294.18828234965" r="2.4836700404985543" fill="#FFFFFF" opacity="0.6916834385434396" /><circle cx="38.53555558811066" cy="374.0215500124958" r="2.600803828841743" fill="#FFFFFF" opacity="0.7531901289214695" /><circle cx="292.2287332413111" cy="169.64394572562264" r="1.6622951171287856" fill="#FFFFFF" opacity="0.855481230650627" /><circle cx="223.96107869730577" cy="129.63600389444622" r="3.1300902037893263" fill="#FFFFFF" opacity="0.8385856146925443" /><circle cx="328.3748146373208" cy="95.84427534658823" r="1.2226185167733732" fill="#FFFFFF" opacity="0.3974415063168631" /><circle cx="70.04786400583151" cy="209.32238512733923" r="1.2861153775123046" fill="#FFFFFF" opacity="0.5268562013225094" /><circle cx="208.94091989905527" cy="376.6074709883655" r="2.3849280463585814" fill="#FFFFFF" opacity="0.28823226015726844" /><circle cx="330.15219861363676" cy="148.9274293475231" r="1.4298920975157126" fill="#FFFFFF" opacity="0.9470370289007708" /><circle cx="189.49441184676016" cy="274.38560609051314" r="0.6832066236518245" fill="#FFFFFF" opacity="0.8276009950497669" /><circle cx="212.2522369383887" cy="341.4816565147294" r="2.0868716903931235" fill="#FFFFFF" opacity="0.5773837227935468" /><circle cx="56.14966680662845" cy="69.72071969934888" r="2.8181609361808477" fill="#FFFFFF" opacity="0.6417842284099102" /><circle cx="284.8051068899473" cy="180.12453473567695" r="2.9808438141371565" fill="#FFFFFF" opacity="0.6010576369760354" /><circle cx="294.11496815708455" cy="303.6148544846141" r="1.0489900047437186" fill="#FFFFFF" opacity="0.33237521902886225" /><circle cx="159.56732679293174" cy="144.9757129967887" r="2.6844069371309" fill="#FFFFFF" opacity="0.6759950157229164" /><circle cx="115.97835571696481" cy="70.65825449584212" r="2.5785123720237033" fill="#FFFFFF" opacity="0.5162426923746906" /><circle cx="75.32786808046615" cy="304.5679375379609" r="2.9122841046219414" fill="#FFFFFF" opacity="0.3869017798391188" /><circle cx="164.19408898958685" cy="370.2132102486853" r="1.3202179968771692" fill="#FFFFFF" opacity="0.8379073520007221" /><circle cx="238.45205628825198" cy="56.06243449423256" r="2.321560069975658" fill="#FFFFFF" opacity="0.22976776998128587" /><circle cx="267.7270519883057" cy="281.2517685575087" r="2.0556685713976375" fill="#FFFFFF" opacity="0.3679051419640093" />
+-        <g transform="translate(200 200)">
+-          <line x1="0" y1="0" x2="60" y2="0" stroke="#FFFFFF" stroke-width="3"/><line x1="0" y1="0" x2="30.000000000000007" y2="51.96152422706631" stroke="#FFFFFF" stroke-width="3"/><line x1="0" y1="0" x2="-29.999999999999986" y2="51.96152422706632" stroke="#FFFFFF" stroke-width="3"/><line x1="0" y1="0" x2="-60" y2="7.34788079488412e-15" stroke="#FFFFFF" stroke-width="3"/><line x1="0" y1="0" x2="-30.00000000000003" y2="-51.961524227066306" stroke="#FFFFFF" stroke-width="3"/><line x1="0" y1="0" x2="30.000000000000007" y2="-51.96152422706631" stroke="#FFFFFF" stroke-width="3"/>
+-        </g>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">눈의 꽃</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">박효신</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/park-hyo-shin-wildflower.svg	2026-10-15 01:07:06.892156621 +0900
++++ b/public/covers/park-hyo-shin-wildflower.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,21 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#0F2A23"/>
+-      <stop offset="100%" stop-color="#3E8C71"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#3E8C71"/>
+-      <stop offset="100%" stop-color="#F2C94C"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <ellipse cx="260" cy="200" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(0 260 200)"/><ellipse cx="230" cy="251.96152422706632" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(60 230 251.96152422706632)"/><ellipse cx="170" cy="251.96152422706632" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(120 170 251.96152422706632)"/><ellipse cx="140" cy="200" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(180 140 200)"/><ellipse cx="169.99999999999997" cy="148.03847577293368" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(240 169.99999999999997 148.03847577293368)"/><ellipse cx="230" cy="148.03847577293368" rx="40" ry="70" fill="#F2C94C" opacity="0.85" transform="rotate(300 230 148.03847577293368)"/>
+-        <circle cx="200" cy="200" r="35" fill="#3E8C71" />
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">야생화</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">박효신</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/paul-kim-every-day.svg	2026-10-15 01:07:06.892207055 +0900
++++ b/public/covers/paul-kim-every-day.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,20 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FFD6E0"/>
+-      <stop offset="100%" stop-color="#FFB6C1"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#FFB6C1"/>
+-      <stop offset="100%" stop-color="#F08080"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <ellipse cx="284.69262259205124" cy="164.8695904839605" rx="9.33561940882981" ry="18.67123881765962" fill="#F08080" opacity="0.7247887045080028" transform="rotate(239.51810696702555 284.69262259205124 164.8695904839605)"/><ellipse cx="264.4721914869975" cy="241.72625141995323" rx="11.122843563924" ry="22.245687127848" fill="#F08080" opacity="0.4384162344633263" transform="rotate(255.15415753284663 264.4721914869975 241.72625141995323)"/><ellipse cx="384.0146553554076" cy="25.650627061466036" rx="10.421777877275064" ry="20.843555754550128" fill="#F08080" opacity="0.7430834777528217" transform="rotate(36.541547406908784 384.0146553554076 25.650627061466036)"/><ellipse cx="228.4860329910845" cy="229.98551797362316" rx="9.31683127268564" ry="18.63366254537128" fill="#F08080" opacity="0.3763348145288925" transform="rotate(54.51832828251282 228.4860329910845 229.98551797362316)"/><ellipse cx="195.14472432573325" cy="205.07835609750478" rx="6.252287595391512" ry="12.504575190783024" fill="#F08080" opacity="0.605498995391975" transform="rotate(30.297111676159602 195.14472432573325 205.07835609750478)"/><ellipse cx="336.24407824321565" cy="109.62271940721871" rx="7.890623023342388" ry="15.781246046684776" fill="#F08080" opacity="0.6057450207545021" transform="rotate(227.7862619060465 336.24407824321565 109.62271940721871)"/><ellipse cx="231.71909623588496" cy="304.6138186398309" rx="6.0743428053989135" ry="12.148685610797827" fill="#F08080" opacity="0.5996709740547297" transform="rotate(160.57222144077002 231.71909623588496 304.6138186398309)"/><ellipse cx="218.87523668542593" cy="61.43976192160321" rx="10.4250034349859" ry="20.8500068699718" fill="#F08080" opacity="0.4249566875770413" transform="rotate(231.92453264022117 218.87523668542593 61.43976192160321)"/><ellipse cx="125.02259222473562" cy="154.4250035987056" rx="5.626359011460803" ry="11.252718022921606" fill="#F08080" opacity="0.4099567110924779" transform="rotate(160.80174104762622 125.02259222473562 154.4250035987056)"/><ellipse cx="27.230279794011423" cy="122.85511037468399" rx="10.250590889845888" ry="20.501181779691777" fill="#F08080" opacity="0.5927066466916171" transform="rotate(358.6248410992937 27.230279794011423 122.85511037468399)"/><ellipse cx="39.989349862941296" cy="185.01286397420373" rx="5.0185368635096905" ry="10.037073727019381" fill="#F08080" opacity="0.6726594904275072" transform="rotate(131.77418421322793 39.989349862941296 185.01286397420373)"/><ellipse cx="394.95239848950587" cy="264.2993411390004" rx="11.69862998918384" ry="23.39725997836768" fill="#F08080" opacity="0.3147118066213558" transform="rotate(306.02796908463887 394.95239848950587 264.2993411390004)"/><ellipse cx="10.204880045352782" cy="58.322054960277605" rx="10.956124295655847" ry="21.912248591311695" fill="#F08080" opacity="0.3898825103894422" transform="rotate(261.6027656234598 10.204880045352782 58.322054960277605)"/><ellipse cx="351.62222181371294" cy="92.49162454900714" rx="8.501420297482838" ry="17.002840594965676" fill="#F08080" opacity="0.7447358483795046" transform="rotate(33.187583121582406 351.62222181371294 92.49162454900714)"/><ellipse cx="340.3764810375087" cy="164.37150599785807" rx="5.600415720883323" ry="11.200831441766645" fill="#F08080" opacity="0.5512730150979563" transform="rotate(30.447806356909748 340.3764810375087 164.37150599785807)"/><ellipse cx="63.087689387617814" cy="53.624417370216634" rx="10.61077008295904" ry="21.22154016591808" fill="#F08080" opacity="0.7937726860198645" transform="rotate(63.77468467892069 63.087689387617814 53.624417370216634)"/><ellipse cx="159.68488299165568" cy="356.6355464531766" rx="9.567625225118878" ry="19.135250450237756" fill="#F08080" opacity="0.6907438773759431" transform="rotate(28.603474280180624 159.68488299165568 356.6355464531766)"/><ellipse cx="172.99817556114795" cy="276.7210050822394" rx="5.968734627099221" ry="11.937469254198442" fill="#F08080" opacity="0.6808632770539289" transform="rotate(50.06208249844738 172.99817556114795 276.7210050822394)"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">모든 날, 모든 순간</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">폴킴</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/sung-si-kyung-on-the-street.svg	2026-10-15 01:07:06.892256778 +0900
++++ b/public/covers/sung-si-kyung-on-the-street.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,23 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#1B1F3A"/>
+-      <stop offset="100%" stop-color="#5C6B99"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#5C6B99"/>
+-      <stop offset="100%" stop-color="#E2D89F"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <rect x="60" y="240" width="80" height="160" fill="#5C6B99" opacity="0.7"/>
+-        <rect x="160" y="160" width="80" height="240" fill="#5C6B99" opacity="0.6"/>
+-        <rect x="260" y="200" width="80" height="200" fill="#5C6B99" opacity="0.7"/>
+-        <rect x="93.42428702685513" y="220.31962648799686" width="6" height="6" fill="#E2D89F"/><rect x="279.7677743864582" y="251.91650506107334" width="6" height="6" fill="#E2D89F"/><rect x="328.82271894922144" y="229.12568345425132" width="6" height="6" fill="#E2D89F"/><rect x="184.0234592857933" y="289.6757871652943" width="6" height="6" fill="#E2D89F"/><rect x="154.04129962400208" y="341.42363560366135" width="6" height="6" fill="#E2D89F"/><rect x="295.9517144155153" y="286.65916236187104" width="6" height="6" fill="#E2D89F"/><rect x="222.92816481500316" y="287.61176381109385" width="6" height="6" fill="#E2D89F"/><rect x="210.79493238901776" y="218.90771417881837" width="6" height="6" fill="#E2D89F"/><rect x="248.85953436810266" y="312.43057748079514" width="6" height="6" fill="#E2D89F"/><rect x="218.94935180247697" y="187.39071071054477" width="6" height="6" fill="#E2D89F"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">거리에서</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">성시경</text>
+-  </g>
+-</svg>
+\ No newline at end of file
+
+--- a/public/covers/younha-event-horizon.svg	2026-10-15 01:07:06.892315514 +0900
++++ b/public/covers/younha-event-horizon.svg	1970-01-01 09:00:00.000000000 +0900
+@@ -1,22 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+-  <defs>
+-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#0A0F2C"/>
+-      <stop offset="100%" stop-color="#5B3FCF"/>
+-    </linearGradient>
+-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+-      <stop offset="0%" stop-color="#5B3FCF"/>
+-      <stop offset="100%" stop-color="#FF6EC7"/>
+-    </linearGradient>
+-  </defs>
+-  <rect width="400" height="400" fill="url(#bg)"/>
+-  
+-        <circle cx="273.85574874784356" cy="123.59095278449739" r="0.9202103491584328" fill="#FF6EC7" opacity="0.32943101674305125" /><circle cx="90.47326784191445" cy="14.510350258725335" r="1.3756432036846395" fill="#5B3FCF" opacity="0.6341124964008862" /><circle cx="148.02506957411072" cy="145.53387341019464" r="1.0718426437393693" fill="#5B3FCF" opacity="0.8181624382020742" /><circle cx="60.851656827900015" cy="114.15050815569523" r="1.5331815903574015" fill="#5B3FCF" opacity="0.28011970353214866" /><circle cx="216.62263241912402" cy="338.7688777989566" r="1.049477696495835" fill="#FF6EC7" opacity="0.2757493755530111" /><circle cx="232.35980189391063" cy="42.94374435200634" r="1.9706886400478003" fill="#5B3FCF" opacity="0.8874899243741998" /><circle cx="76.36702139181119" cy="345.16216363408114" r="1.1704385362152456" fill="#FF6EC7" opacity="0.5270294127315168" /><circle cx="388.07170033103915" cy="86.63581154083894" r="0.7021725571733027" fill="#FF6EC7" opacity="0.7780063041718994" /><circle cx="238.5639078541687" cy="26.513156422843043" r="0.5246619542117854" fill="#FF6EC7" opacity="0.7814951189977501" /><circle cx="351.65365872794285" cy="318.58265716456174" r="1.7002306785683672" fill="#FF6EC7" opacity="0.4565867506439465" /><circle cx="178.0825914800428" cy="299.0744405504805" r="1.4951289090020288" fill="#FF6EC7" opacity="0.5497500441624446" /><circle cx="369.15627724083373" cy="34.93650368375341" r="1.5149731648535643" fill="#5B3FCF" opacity="0.416781950870686" /><circle cx="44.43460458706339" cy="53.42533497602351" r="0.7238807605298485" fill="#FF6EC7" opacity="0.33979593020384896" /><circle cx="305.9486115714166" cy="65.52361373151135" r="2.010686967229302" fill="#5B3FCF" opacity="0.549814592213856" /><circle cx="30.078279192067157" cy="117.826424510241" r="1.7428612051533134" fill="#5B3FCF" opacity="0.7269457009135478" /><circle cx="292.8876074677542" cy="362.376353894356" r="1.453486340977553" fill="#FF6EC7" opacity="0.34300367345131155" /><circle cx="71.73279431385593" cy="56.102997772919935" r="0.35005710885183355" fill="#FF6EC7" opacity="0.4674533517114819" /><circle cx="157.12751370187092" cy="133.73939479772216" r="1.7088766280112877" fill="#FF6EC7" opacity="0.993111385871775" /><circle cx="391.99598282547413" cy="348.5654756890781" r="0.9754781355199749" fill="#5B3FCF" opacity="0.7492635552755875" /><circle cx="364.01058916862587" cy="92.52331182647788" r="1.5614904021802667" fill="#5B3FCF" opacity="0.5454199674480917" /><circle cx="1.248947366747144" cy="271.25490975903904" r="0.6274008424944466" fill="#FF6EC7" opacity="0.23220315820557308" /><circle cx="163.14329214686984" cy="0.28054156189014634" r="1.4425527598801116" fill="#5B3FCF" opacity="0.48438269760993785" /><circle cx="153.11305310761148" cy="5.086766509238494" r="1.572881307215135" fill="#5B3FCF" opacity="0.5415251586358504" /><circle cx="313.65154483696483" cy="42.19158868504365" r="1.1894951126703353" fill="#FF6EC7" opacity="0.5171392074180514" /><circle cx="117.59260452068996" cy="101.10180052781664" r="1.0315492037560257" fill="#5B3FCF" opacity="0.7203010509733039" /><circle cx="236.96871053158642" cy="39.68986756191475" r="0.5299755605873195" fill="#FF6EC7" opacity="0.3711302293573868" /><circle cx="215.80773167033723" cy="127.45036730640535" r="1.1768507451778927" fill="#5B3FCF" opacity="0.2899841318811636" /><circle cx="215.3048499958244" cy="341.9796138752242" r="0.9256462912393255" fill="#5B3FCF" opacity="0.5593901787172755" /><circle cx="211.95521174424908" cy="132.72789126920813" r="1.0677114652786341" fill="#5B3FCF" opacity="0.6061466867232155" /><circle cx="356.82521610944514" cy="74.95538188465333" r="1.247414438972854" fill="#FF6EC7" opacity="0.5070972525220669" /><circle cx="119.38080134762413" cy="281.68366447001637" r="0.5243588244589934" fill="#5B3FCF" opacity="0.7418132743945178" /><circle cx="290.3117336203982" cy="337.2801667938196" r="1.6062428376053606" fill="#FF6EC7" opacity="0.9061179757023123" /><circle cx="142.2312016079891" cy="224.01143120101423" r="1.0801757946658188" fill="#FF6EC7" opacity="0.9781163545790241" /><circle cx="359.34366352171946" cy="114.806620122144" r="1.2976352256195298" fill="#FF6EC7" opacity="0.7930179132042261" /><circle cx="8.070757181993171" cy="329.71713168868087" r="1.1752225396278027" fill="#5B3FCF" opacity="0.4818099337221674" /><circle cx="24.848706878552605" cy="37.77543565366442" r="1.2968207935370373" fill="#5B3FCF" opacity="0.9640032052034093" /><circle cx="197.79156687234618" cy="273.9538263018936" r="0.4812921770260612" fill="#FF6EC7" opacity="0.9203248127954995" /><circle cx="159.71242861647124" cy="203.6460405007026" r="0.34712767539295136" fill="#5B3FCF" opacity="0.7928285358461202" /><circle cx="362.5916945753789" cy="120.09609733689723" r="1.5695376056519064" fill="#5B3FCF" opacity="0.5396299933400687" /><circle cx="90.51065821446005" cy="153.2259567317676" r="1.371203205063016" fill="#5B3FCF" opacity="0.39035736630842977" /><circle cx="349.69076809048653" cy="108.98593196722683" r="1.150191354206888" fill="#5B3FCF" opacity="0.6693614928532194" /><circle cx="155.4490052565256" cy="76.71140513178614" r="0.4845532070130273" fill="#FF6EC7" opacity="0.9624437637193195" /><circle cx="26.5474012359757" cy="181.9707198887236" r="2.0229421881551612" fill="#FF6EC7" opacity="0.8170369729820941" /><circle cx="76.2867617917931" cy="122.66501097504978" r="1.471737995804747" fill="#5B3FCF" opacity="0.28557069767782056" /><circle cx="332.78912284464116" cy="12.313212545162022" r="0.9311399908562181" fill="#5B3FCF" opacity="0.9064661659369382" /><circle cx="142.75859158545146" cy="207.6549644889633" r="1.4466118426941244" fill="#5B3FCF" opacity="0.35834271554610686" /><circle cx="89.59060548862095" cy="283.8447448484309" r="0.4149405123546425" fill="#FF6EC7" opacity="0.8459567339916847" /><circle cx="17.685571962750977" cy="287.97652677980136" r="1.737510072706796" fill="#FF6EC7" opacity="0.3738303517633919" /><circle cx="207.6014551822133" cy="253.42407548749625" r="0.6925483847947296" fill="#5B3FCF" opacity="0.9861468313716535" /><circle cx="128.3385087575073" cy="122.98607360972875" r="1.387968032775676" fill="#FF6EC7" opacity="0.492954851400579" /><circle cx="121.02177533440637" cy="125.59019339556512" r="0.6535012403397937" fill="#FF6EC7" opacity="0.291540169240365" /><circle cx="116.03424785186553" cy="161.62444063907787" r="1.4189196887052469" fill="#FF6EC7" opacity="0.8959805998913624" /><circle cx="297.46115985316794" cy="101.70260104384359" r="0.8023388497764159" fill="#5B3FCF" opacity="0.23341142534036044" /><circle cx="46.2826470092359" cy="279.2492698120282" r="0.9950963554812995" fill="#FF6EC7" opacity="0.27903584543722815" /><circle cx="191.75047585277358" cy="398.8740736075184" r="0.9065544949492159" fill="#FF6EC7" opacity="0.690040150125895" /><circle cx="92.23303996711851" cy="338.8990639141746" r="1.2700413639384802" fill="#5B3FCF" opacity="0.2992623937158736" /><circle cx="343.10197557103106" cy="231.11912454236312" r="0.9043034324398502" fill="#5B3FCF" opacity="0.9105647940453079" /><circle cx="22.768628307761183" cy="336.56006950579985" r="0.36615846953460435" fill="#FF6EC7" opacity="0.39334626963731667" /><circle cx="224.13969385998215" cy="235.49538331146832" r="1.2690663591753915" fill="#FF6EC7" opacity="0.47043060579179113" /><circle cx="32.21697520838931" cy="258.0780936844461" r="1.6421151766554214" fill="#5B3FCF" opacity="0.8579809652379" /><circle cx="263.8025005059128" cy="260.49074473438213" r="1.4285423791028713" fill="#5B3FCF" opacity="0.9941471216964792" /><circle cx="258.9644481105816" cy="309.9662598199041" r="0.5834887422607868" fill="#5B3FCF" opacity="0.38243876049651276" /><circle cx="74.29075417066598" cy="110.72022080680406" r="1.632498871861004" fill="#5B3FCF" opacity="0.8103441333121377" /><circle cx="328.1030396133634" cy="0.4928147214444678" r="0.425669163844609" fill="#FF6EC7" opacity="0.9288329643793316" /><circle cx="251.625721280257" cy="39.18720803334907" r="2.006141629861437" fill="#5B3FCF" opacity="0.27058324025831937" /><circle cx="89.57124374375209" cy="280.0645166954531" r="1.1595801697703982" fill="#5B3FCF" opacity="0.6652487740859782" /><circle cx="269.01326964982457" cy="332.44633303116365" r="1.8647682630950309" fill="#FF6EC7" opacity="0.9079568525828023" /><circle cx="296.913612830924" cy="133.94761256955894" r="0.8443340746218126" fill="#5B3FCF" opacity="0.9609862175425536" /><circle cx="236.2130666964341" cy="54.16327827039504" r="1.050399228296355" fill="#FF6EC7" opacity="0.7075181322458428" /><circle cx="76.04475291578332" cy="231.78515557313463" r="1.9984396220212204" fill="#FF6EC7" opacity="0.2591897986223674" /><circle cx="56.00623330124259" cy="30.432087614637695" r="0.3071021019246199" fill="#FF6EC7" opacity="0.632234311303387" /><circle cx="186.979017803474" cy="334.5358453459151" r="0.8913498315033268" fill="#5B3FCF" opacity="0.3132911795664713" /><circle cx="268.5714664890699" cy="390.56765853070743" r="1.0930223757190096" fill="#FF6EC7" opacity="0.42398087263526735" /><circle cx="324.8948611147264" cy="89.26580872161493" r="0.5356702224962809" fill="#FF6EC7" opacity="0.7457099996112733" /><circle cx="199.362530552985" cy="188.07366665754276" r="1.057304211003887" fill="#FF6EC7" opacity="0.8803903066241809" /><circle cx="167.86472628640846" cy="300.13148538034096" r="0.4706283402838606" fill="#5B3FCF" opacity="0.899025619471002" /><circle cx="388.0306246210203" cy="343.19543768937694" r="0.647539972723739" fill="#5B3FCF" opacity="0.722782020829668" /><circle cx="261.4102534256631" cy="172.63114126170603" r="0.46689817485072915" fill="#5B3FCF" opacity="0.36737642930201764" /><circle cx="146.19356898431107" cy="41.27132640492279" r="0.9520553340600806" fill="#5B3FCF" opacity="0.9124568859322462" /><circle cx="211.37658086740512" cy="31.439468384448777" r="0.7143675319293581" fill="#FF6EC7" opacity="0.4443562076319089" /><circle cx="202.36559944865922" cy="205.5743359284579" r="0.42850593505026474" fill="#FF6EC7" opacity="0.6456576359804158" /><circle cx="129.70982828619583" cy="72.84564729818537" r="1.960954192172134" fill="#FF6EC7" opacity="0.34286251783792243" /><circle cx="102.8120396220372" cy="344.868073016494" r="1.2810183956224712" fill="#5B3FCF" opacity="0.20353695700154253" /><circle cx="66.04175854450092" cy="48.75837346876484" r="1.4006448263089828" fill="#5B3FCF" opacity="0.8803216341993252" /><circle cx="169.77947077711053" cy="13.29048827356032" r="1.475424405476585" fill="#FF6EC7" opacity="0.46881040046411154" /><circle cx="106.2349193882039" cy="160.38582089596432" r="1.9501992299428712" fill="#5B3FCF" opacity="0.9773773208071888" /><circle cx="373.80056501831314" cy="389.494082098105" r="1.843646651293036" fill="#FF6EC7" opacity="0.48593617610729534" /><circle cx="228.82739748673976" cy="0.06321836758509392" r="0.8175109560516935" fill="#5B3FCF" opacity="0.6817033625488618" /><circle cx="109.91386586289478" cy="295.04620445175914" r="1.5339619164869562" fill="#FF6EC7" opacity="0.39499140667275817" /><circle cx="379.3660778767843" cy="29.903513124268557" r="1.2338956036012267" fill="#5B3FCF" opacity="0.6822531100137026" /><circle cx="65.49367677138704" cy="182.26813210549437" r="2.0267584547079616" fill="#5B3FCF" opacity="0.6624683675483356" /><circle cx="36.54979126987956" cy="124.23657385775213" r="1.9328624777253058" fill="#FF6EC7" opacity="0.6990766366793169" /><circle cx="143.94943144836213" cy="322.33457823739025" r="2.089965625550043" fill="#5B3FCF" opacity="0.3796208160951773" /><circle cx="192.9871204893069" cy="219.48150667482182" r="0.61268739029111" fill="#FF6EC7" opacity="0.5095156639364529" /><circle cx="323.90966803428717" cy="129.16078547658617" r="1.0795919786361217" fill="#FF6EC7" opacity="0.3739375713897328" /><circle cx="223.3174444920202" cy="228.3908448061569" r="1.3537072138833417" fill="#FF6EC7" opacity="0.3454652808273406" /><circle cx="160.67423650662965" cy="284.1315741653493" r="0.6999628375646092" fill="#5B3FCF" opacity="0.7846766200418407" /><circle cx="131.1249666232766" cy="98.95738803784036" r="1.8352030379894508" fill="#FF6EC7" opacity="0.7888212757169888" /><circle cx="76.97718132567033" cy="345.3257710073783" r="1.5850816054925516" fill="#5B3FCF" opacity="0.6580000974900966" /><circle cx="105.31916312073423" cy="323.1516896233392" r="1.878084417802612" fill="#FF6EC7" opacity="0.8407595463819659" />
+-        <ellipse cx="200" cy="200" rx="170" ry="40" fill="none" stroke="#5B3FCF" stroke-width="2" opacity="0.4" transform="rotate(-20 200 200)"/>
+-        <ellipse cx="200" cy="200" rx="120" ry="25" fill="none" stroke="#FF6EC7" stroke-width="2" opacity="0.5" transform="rotate(-20 200 200)"/>
+-      
+-  <g>
+-    <text x="24" y="354" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="22" font-weight="800" fill="rgba(255,255,255,0.95)">사건의 지평선</text>
+-    <text x="24" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="500" fill="rgba(255,255,255,0.75)">윤하</text>
+-  </g>
+-</svg>
+\ No newline at end of file

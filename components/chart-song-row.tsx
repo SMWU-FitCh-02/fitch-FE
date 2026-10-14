@@ -7,11 +7,15 @@ import { useStore } from "@/lib/store"
 import { noteToMidi } from "@/lib/songs"
 import { fetchArtwork } from "@/lib/artwork-cache"
 import { usePreviewPlayer } from "@/lib/audio-preview"
-import { useKeyAdjustPreviewPlayer } from "@/lib/key-adjust-player"
 import { stopOtherPreviews } from "@/lib/preview-bus"
-import { api, buildSongKey } from "@/lib/api"
-import { addWatch } from "@/lib/analysis-watch"
 import { koreanArtistName } from "@/lib/artist-aliases"
+import { SongCredit } from "@/components/song-credit"
+
+// 전시회: 우리 DB의 저작권 프리(CC BY) 곡은 id가 "song-{songId}" 형태다.
+// 이 곡들은 iTunes 앨범커버/미리듣기를 조회하지 않는다 (제목이 같은 다른 곡이 잡힐 수 있고, 음원을 쓰지 않는 방침).
+export function isOwnSong(id: string): boolean {
+    return id.startsWith("song-")
+}
 
 export type ChartEntryWithRange = ChartEntry & {
     minNote?: number
@@ -123,7 +127,7 @@ function PreviewButton({
         }
     }
 
-    if (previewUrl === null) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
+    if (previewUrl === null || isOwnSong(entry.id)) return null // 미리듣기 없는 곡은 버튼 자체를 숨김
 
     const iconClass = size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3"
     const icon = loading ? (
@@ -212,92 +216,36 @@ function KeyAdjustButton({
     )
 }
 
-// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡/키 조정 음원 재생
+// 곡 행을 눌렀을 때 펼쳐지는 패널: 내 음역대 기준 추천 키 + 원곡 미리듣기
 function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
     const { profile } = useStore()
     const range = profile.range
-    // 분석 요청이 끝나서 새로 알게 된 음역대 (원래 entry에 없던 곡용)
-    const [live, setLive] = React.useState<{ minNote: number; maxNote: number } | null>(null)
-    const eff: ChartEntryWithRange = {
-        ...entry,
-        minNote: entry.minNote ?? live?.minNote,
-        maxNote: entry.maxNote ?? live?.maxNote,
-    }
-    const shift = computeKeySemitoneShift(eff, range)
+    const shift = computeKeySemitoneShift(entry, range)
     const preview = usePreviewPlayer()
-    const keyPlayer = useKeyAdjustPreviewPlayer()
     const [previewUrl, setPreviewUrl] = React.useState<string | null | undefined>(undefined)
     const [loadingOrig, setLoadingOrig] = React.useState(false)
 
-    const hasInfo = eff.minNote != null && eff.maxNote != null && !!range
+    const hasInfo = entry.minNote != null && entry.maxNote != null && !!range
     const tooBig = Math.abs(shift) > MAX_KEY_ADJUST_SEMITONES
     const canAdjust = shift !== 0 && !tooBig
     const origPlaying = preview.playingId === entry.id
-    const adjPlaying = keyPlayer.playingId === entry.id
-    const adjLoading = adjPlaying && keyPlayer.state === "loading"
 
     // 패널이 닫히면(=이 컴포넌트가 사라지면) 이 곡의 소리도 같이 끈다.
     const playingRef = React.useRef(false)
-    playingRef.current = origPlaying || adjPlaying
+    playingRef.current = origPlaying
     React.useEffect(() => {
         return () => {
             if (playingRef.current) stopOtherPreviews("")
         }
     }, [])
 
-    // ---- 분석 요청 (음역 정보가 없는 곡) ----
-    const songKey = buildSongKey(entry.title, entry.artist)
-    const needsAnalysis = !!range && entry.minNote == null
-    const [analysis, setAnalysis] = React.useState<"checking" | "none" | "PENDING" | "FAILED" | "requesting">("checking")
-
-    async function refreshAnalysis() {
-        try {
-            const ranges = await api.getVocalRanges([{ title: entry.title, artist: entry.artist }])
-            const r = ranges?.[songKey]
-            if (r && r.minNote != null && r.maxNote != null) {
-                setLive({ minNote: r.minNote, maxNote: r.maxNote })
-                return
-            }
-            const st = await api.getAnalysisStatuses([{ title: entry.title, artist: entry.artist }])
-            const s = st?.[songKey]
-            if (s === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
-            setAnalysis(s === "PENDING" ? "PENDING" : s === "FAILED" ? "FAILED" : "none")
-        } catch {
-            setAnalysis("none")
-        }
-    }
-
-    async function requestAnalysis() {
-        setAnalysis("requesting")
-        try {
-            const r = await api.requestSongAnalysis({ title: entry.title, artist: entry.artist })
-            if (r.status === "DONE") await refreshAnalysis()
-            else {
-                if (r.status === "PENDING") addWatch({ title: entry.title, artist: entry.artist })
-                setAnalysis(r.status === "PENDING" ? "PENDING" : "none")
-            }
-        } catch {
-            setAnalysis("none")
-        }
-    }
-
-    React.useEffect(() => {
-        if (!needsAnalysis) return
-        refreshAnalysis()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [entry.title, entry.artist, needsAnalysis])
-
-    // 분석 중이면 15초마다 결과가 올라왔는지 확인
-    React.useEffect(() => {
-        if (analysis !== "PENDING" || live) return
-        const t = setInterval(refreshAnalysis, 15000)
-        return () => clearInterval(t)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [analysis, live])
-
     async function getUrl(): Promise<string | null> {
         if (previewUrl) return previewUrl
         if (previewUrl === null) return null
+        if (isOwnSong(entry.id)) {
+            setPreviewUrl(null)
+            return null
+        }
         try {
             const data = await fetchArtwork(entry.title, entry.artist)
             setPreviewUrl(data.previewUrl ?? null)
@@ -325,27 +273,18 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
         if (url) preview.toggle(entry.id, url)
     }
 
-    async function playAdjusted() {
-        if (adjPlaying) {
-            keyPlayer.toggle(entry.id, "", 0)
-            return
-        }
-        const url = await getUrl()
-        if (url) keyPlayer.toggle(entry.id, url, shift)
-    }
-
     let headline: string
     let sub = ""
     if (!range) {
         headline = "음역대를 재면 추천 키를 알려드려요"
     } else if (!hasInfo) {
-        headline = "아직 분석되지 않은 곡이에요"
+        headline = "음역 정보가 없는 곡이에요"
     } else if (shift === 0) {
         headline = "내 음역대에 딱이에요 🎯"
     } else if (tooBig) {
-        // 조정해야 할 키 수는 알려주되, 차이가 커서 키를 바꾼 음원(내 키 버전)은 제공하지 않는다.
+        // 조정해야 할 키 수만 알려준다.
         headline = `${shift > 0 ? "+" : ""}${shift}키 정도 필요해요`
-        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해져요. 내 키 버전은 제공하지 않아요"
+        sub = "음역대 차이가 커서 키를 바꾸면 소리가 어색해질 수 있어요"
     } else {
         headline = `${shift > 0 ? "+" : ""}${shift}키로 불러보세요`
     }
@@ -362,28 +301,9 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                 </div>
                 {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </div>
-            {range && !hasInfo && analysis !== "checking" && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {analysis === "PENDING" || analysis === "requesting" ? (
-                        <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                            <span>{analysis === "requesting" ? "요청하는 중이에요..." : "분석 중이에요. 이 곡을 열어두면 끝나는 대로 바뀌어요"}</span>
-                        </>
-                    ) : (
-                        <>
-                            <button
-                                onClick={requestAnalysis}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground h-8 px-3 text-xs font-semibold"
-                            >
-                                <Wand2 className="h-3.5 w-3.5" />
-                                {analysis === "FAILED" ? "다시 분석 요청" : "분석 요청"}
-                            </button>
-                            <span>{analysis === "FAILED" ? "분석에 실패했어요" : "분석에는 몇 분 걸려요"}</span>
-                        </>
-                    )}
-                </div>
-            )}
-            {previewUrl === null ? (
+            {isOwnSong(entry.id) ? (
+                <SongCredit title={entry.title} artist={entry.artist} />
+            ) : previewUrl === null ? (
                 <div className="text-xs text-muted-foreground">
                     이 곡은 미리듣기를 제공하지 않아요
                 </div>
@@ -397,16 +317,6 @@ function KeyAdjustPanel({ entry }: { entry: ChartEntryWithRange }) {
                         {loadingOrig || previewUrl === undefined ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : origPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                         <span>{origPlaying ? "재생 중" : "미리듣기"}</span>
                     </button>
-                    {canAdjust && (
-                        <button
-                            onClick={playAdjusted}
-                            disabled={previewUrl === undefined}
-                            className={`${btnBase} bg-black/70 text-brand hover:bg-black/85 disabled:opacity-50`}
-                        >
-                            {adjLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : adjPlaying ? <Pause className="h-3.5 w-3.5" /> : <Wand2 className="h-3.5 w-3.5" />}
-                            <span>{adjPlaying ? "재생 중" : "내 키 버전"}</span>
-                        </button>
-                    )}
                 </div>
             )}
         </div>

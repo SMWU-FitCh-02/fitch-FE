@@ -2,28 +2,21 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Bookmark, BookmarkCheck, Play, Pause } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { api, type SongResponse } from "@/lib/api"
 import { difficultyTier, colorFromString } from "@/lib/song-display"
-import { fetchArtwork } from "@/lib/artwork-cache"
 import { BackendSongCard } from "@/components/backend-song-card"
-import { useStore } from "@/lib/store"
+import { SongCredit } from "@/components/song-credit"
 
 export default function SongDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const songId = Number(params.id)
-  const { bookmarkedSongIds } = useStore()
-  const isSaved = bookmarkedSongIds.has(songId)
 
   const [song, setSong] = React.useState<SongResponse | null>(null)
   const [similar, setSimilar] = React.useState<SongResponse[]>([])
-  const [artworkUrl, setArtworkUrl] = React.useState<string | null>(null)
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
-  const [playing, setPlaying] = React.useState(false)
-  const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   React.useEffect(() => {
     if (!songId) return
@@ -34,13 +27,6 @@ export default function SongDetailPage() {
         const s = await api.getSong(songId)
         if (cancelled) return
         setSong(s)
-
-        // real cover + real 30s preview, looked up by title/artist
-        fetchArtwork(s.title, s.artist).then((data) => {
-          if (cancelled) return
-          setArtworkUrl(data.artworkUrl)
-          setPreviewUrl(data.previewUrl)
-        })
 
         // "similar range" = other songs within 3 semitones of this one's max note
         const all: SongResponse[] = await api.getSongs()
@@ -61,17 +47,6 @@ export default function SongDetailPage() {
     }
   }, [songId])
 
-  function togglePlay() {
-    if (!audioRef.current) return
-    if (playing) {
-      audioRef.current.pause()
-      setPlaying(false)
-    } else {
-      audioRef.current.play()
-      setPlaying(true)
-    }
-  }
-
   if (loading) {
     return <div className="px-4 pt-10 text-center text-sm text-muted-foreground">불러오는 중...</div>
   }
@@ -90,16 +65,12 @@ export default function SongDetailPage() {
           </button>
         </header>
       <div className="rounded-[16px] overflow-hidden border border-border mb-5">
-        {artworkUrl ? (
-          <img src={artworkUrl} alt={song.title} className="w-full aspect-square object-cover" />
-        ) : (
-          <div
-            className="w-full aspect-square grid place-items-center text-white text-5xl font-extrabold"
-            style={{ backgroundColor: bg }}
-          >
-            {song.title.charAt(0)}
-          </div>
-        )}
+        <div
+          className="w-full aspect-square grid place-items-center text-white text-5xl font-extrabold"
+          style={{ backgroundColor: bg }}
+        >
+          {song.title.charAt(0)}
+        </div>
         <div className="p-4">
           <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 ${tier.className}`}>
             {tier.label}
@@ -108,26 +79,6 @@ export default function SongDetailPage() {
           <div className="text-sm text-muted-foreground mt-0.5">{song.artist}</div>
         </div>
       </div>
-
-      {previewUrl ? (
-        <button
-          onClick={togglePlay}
-          className="w-full h-12 rounded-[10px] bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 mb-5"
-        >
-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          {playing ? "일시정지" : "미리듣기 (30초)"}
-          <audio
-            ref={audioRef}
-            src={previewUrl}
-            onEnded={() => setPlaying(false)}
-            className="hidden"
-          />
-        </button>
-      ) : (
-        <div className="w-full h-12 rounded-[10px] bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center mb-5">
-          미리듣기를 찾을 수 없어요
-        </div>
-      )}
 
       <div className="rounded-[14px] border border-border bg-card p-4 mb-6">
         <div className="text-sm font-bold mb-3">곡 정보</div>
@@ -138,6 +89,9 @@ export default function SongDetailPage() {
           <div className="text-right">{song.minNoteLabel}</div>
           <div className="text-muted-foreground">최고음</div>
           <div className="text-right">{song.maxNoteLabel}</div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-border/60">
+          <SongCredit title={song.title} artist={song.artist} />
         </div>
       </div>
 

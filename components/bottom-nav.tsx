@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Wand2, Heart, TrendingUp, User } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { AnalysisWatcher } from "@/components/analysis-watcher"
 
 const items = [
     { href: "/library", label: "보관함", icon: Heart },
@@ -61,7 +60,6 @@ export function BottomNav() {
 
     return (
         <>
-            <AnalysisWatcher />
             <nav className="fixed inset-x-0 bottom-0 z-30 px-[8px] pb-[calc(env(safe-area-inset-bottom)+0.075rem)] pt-2">
                 <div
                     className={cn(

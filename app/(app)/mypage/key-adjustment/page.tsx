@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Search, Mic, Wand2, Loader2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChartSongRow, computeKeySemitoneShift, type ChartEntryWithRange } from "@/components/chart-song-row"
+import { ChartSongRow, computeKeySemitoneShift, isOwnSong, type ChartEntryWithRange } from "@/components/chart-song-row"
 import { fetchTjChartWithRange, TJ_CATEGORIES } from "@/lib/tjchart"
 import { useStore } from "@/lib/store"
 import { api, buildSongKey } from "@/lib/api"
@@ -84,12 +84,12 @@ function mergeGenres(a?: string[], b?: string[]): string[] | undefined {
     return all.length ? all : undefined
 }
 
-// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키 + 원곡/내 키 버전 재생)를 그대로 쓴다.
+// 검색 결과 한 줄. 인기차트와 같은 ChartSongRow(눌러서 펼치면 추천 키)를 그대로 쓴다.
 function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
     const [artworkUrl, setArtworkUrl] = React.useState<string | null>(item.artworkUrl || null)
 
     React.useEffect(() => {
-        if (item.artworkUrl) return
+        if (item.artworkUrl || isOwnSong(item.id)) return
         let cancelled = false
         fetchArtwork(item.title, item.artist)
             .then((data) => {
@@ -99,7 +99,7 @@ function SearchSongRow({ item, index }: { item: CatalogItem; index: number }) {
         return () => {
             cancelled = true
         }
-    }, [item.title, item.artist, item.artworkUrl])
+    }, [item.id, item.title, item.artist, item.artworkUrl])
 
     const entry = {
         id: item.id,
@@ -548,7 +548,7 @@ export default function KeyAdjustmentPage() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 className="pl-9 pr-9"
-                                placeholder="예) 아이유 좋은날 같은 느낌의 곡"
+                                placeholder="예) 잔잔하고 감성적인 곡"
                                 value={moodInput}
                                 onChange={(e) => setMoodInput(e.target.value)}
                             />

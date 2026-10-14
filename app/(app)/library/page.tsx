@@ -4,14 +4,12 @@ import * as React from "react"
 import { BookmarkCheck, Heart } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { api, type ChartLikeEntry } from "@/lib/api"
-import { MyAnalysisRequests } from "@/components/my-analysis-requests"
 
 export default function LibraryPage() {
     const { profile, toggleChartLikeRemote } = useStore()
 
     const [likedCharts, setLikedCharts] = React.useState<ChartLikeEntry[]>([])
     const [loading, setLoading] = React.useState(true)
-    const [tab, setTab] = React.useState<"likes" | "requests">("likes")
 
     React.useEffect(() => {
         if (!profile.userId) return
@@ -42,27 +40,7 @@ export default function LibraryPage() {
                 </div>
             </header>
 
-            <div className="mb-4 grid grid-cols-2 rounded-full bg-surface/60 border border-border p-1 text-sm font-semibold">
-                {([
-                    ["likes", "좋아요"],
-                    ["requests", "분석 요청"],
-                ] as const).map(([key, label]) => (
-                    <button
-                        key={key}
-                        type="button"
-                        onClick={() => setTab(key)}
-                        className={`h-9 rounded-full transition-colors ${
-                            tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-
-            {tab === "requests" ? (
-                <MyAnalysisRequests />
-            ) : loading ? (
+            {loading ? (
                 <div className="text-center text-xs text-muted-foreground py-10">불러오는 중...</div>
             ) : (
                 <>
