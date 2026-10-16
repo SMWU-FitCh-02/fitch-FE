@@ -15,11 +15,12 @@ type Phase = "intro" | "low" | "high" | "analyzing" | "done" | "failed"
 type Mode = "guide" | "classic"
 
 // Note ladder going up
-const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"]
-const HIGH_LADDER = ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
-
+const LOW_LADDER = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F4", "G4"]
+const HIGH_LADDER = ["E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"]
 // 낮은 음 테스트는 편한 음(기본 C4, 성별에 따라 다를 수 있음)에서 시작해서 점점 내려간다
 const LOW_LADDER_DESC = [...LOW_LADDER].reverse()
+const GENDER_START_NOTE = { male: "G3", female: "D4" } as const
+
 
 function shiftDownInHighLadder(note: string, steps: number) {
   const i = HIGH_LADDER.indexOf(note)
@@ -42,19 +43,23 @@ export function RangeTest({
                             onComplete,
                             initialPhase = "intro",
                             userId,
-                            startNote = "C4",
+                            startNote,
+                            gender,
                           }: {
   onComplete: (rec: RangeRecord) => void
   initialPhase?: Phase
   userId?: number
   startNote?: string
+  gender?: "male" | "female"
 }) {
-  const LOW_START_INDEX = LOW_LADDER_DESC.includes(startNote)
-      ? LOW_LADDER_DESC.indexOf(startNote)
+  const baseNote = startNote ?? (gender ? GENDER_START_NOTE[gender] : "C4")
+  const LOW_START_INDEX = LOW_LADDER_DESC.includes(baseNote)
+      ? LOW_LADDER_DESC.indexOf(baseNote)
       : LOW_LADDER_DESC.indexOf("C4")
-  const HIGH_START_INDEX = HIGH_LADDER.includes(startNote)
-      ? HIGH_LADDER.indexOf(startNote)
+  const HIGH_START_INDEX = HIGH_LADDER.includes(baseNote)
+      ? HIGH_LADDER.indexOf(baseNote)
       : HIGH_LADDER.indexOf("C4")
+
 
   // 가이드 모드: 현재 인덱스로부터 "지금까지 성공한 마지막 음"을 역산
   function lowestFromIndex(idx: number) {
