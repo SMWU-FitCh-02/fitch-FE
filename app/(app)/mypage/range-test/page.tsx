@@ -21,7 +21,6 @@ export default function MyPageRangeTestPage() {
             .getUser(profile.userId)
             .then((u) => {
                 if (cancelled) return
-                console.log("서버 성별 값:", u.gender)
                 const g = String(u.gender ?? "").toLowerCase()
                 setGender(g === "male" ? "male" : g === "female" ? "female" : undefined)
             })
